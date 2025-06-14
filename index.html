@@ -98,7 +98,7 @@
             margin-top: 15px; /* Space below the quote block */
             padding: 10px 15px;
             max-width: 280px; /* Slightly adjust if needed, to align nicely with quote block */
-            width: 80%;       /* Similar to quote block or adjust */
+            width: 80%;      /* Similar to quote block or adjust */
             font-size: 0.8em; /* Smaller, informative text */
             color: #b0b0b0;   /* A lighter gray, like the attribution */
             line-height: 1.5;
@@ -615,14 +615,12 @@
             .form-grid {
                  grid-template-columns: 1fr;
                  gap: 25px;
-            }
-         }
+             }
+        }
     </style>
 </head>
 <body>
-    <!-- Main launcher interface -->
     <div id="main-container">
-        <!-- Main launcher content -->
         <div id="top-content">
             <div class="video-container">
                 <video id="install-video" width="260" height="260" autoplay loop playsinline muted>
@@ -647,9 +645,8 @@
                  data-off="cancel_off.webp" data-on="cancel_on.webp" onclick="location.href = 'https://legoisland.org';">
         </div>
         
-        <!-- Content Pages (now inside main-container) -->
         <div id="read-me-page" class="page-content">
-            <span class="page-back-button" role="button" aria-label="Go back to main menu">&larr; Back</span>
+            <span class="page-back-button" role="button" aria-label="Go back to main menu">← Back</span>
             <div class="page-inner-content">
                 <h1>Read Me</h1>
                 <p>Welcome to the LEGO Island web port project! This is a recreation of the classic 1997 PC game, rebuilt to run in modern web browsers using Emscripten.</p>
@@ -659,7 +656,7 @@
         </div>
         
         <div id="configure-page" class="page-content">
-            <span class="page-back-button" role="button" aria-label="Go back to main menu">&larr; Back</span>
+            <span class="page-back-button" role="button" aria-label="Go back to main menu">← Back</span>
             <div class="page-inner-content">
                 <div class="config-art-panel">
                     <img src="shark.webp" alt="LEGO Island Shark and Brickster">
@@ -682,7 +679,7 @@
                                         <option value="pt">Portuguese</option>
                                         <option value="ru">Russian</option>
                                         <option value="es">Spanish</option>
-                                    </select>
+                                     </select>
                                 </div>
                             </div>
                         </div>
@@ -748,7 +745,7 @@
                                 <div class="select-wrapper">
                                      <select id="renderer-select" name="3D Device ID">
                                         <option value="0 0x682656f3 0x0 0x0 0x2000000" selected>Software</option>
-                                    </select>
+                                     </select>
                                 </div>
                             </div>
                         </div>
@@ -776,7 +773,7 @@
         </div>
 
         <div id="free-stuff-page" class="page-content">
-            <span class="page-back-button" role="button" aria-label="Go back to main menu">&larr; Back</span>
+            <span class="page-back-button" role="button" aria-label="Go back to main menu">← Back</span>
             <div class="page-inner-content">
                 <div class="resource-list">
                     <blockquote class="page-quote">
@@ -847,14 +844,12 @@
             </div>
         </div>
         
-        <!-- Single footer (now inside main-container) -->
         <div class="footer-disclaimer">
             <p>LEGO® and LEGO Island™ are trademarks of The LEGO Group.</p>
             <p>This is an unofficial fan project and is not affiliated with or endorsed by The LEGO Group.</p>
         </div>
     </div>
 
-    <!-- Emscripten canvas and loading overlay -->
     <div id="canvas-wrapper">
         <div id="loading-gif-overlay">
             <img src="cdspin.gif" alt="Loading game...">
@@ -879,7 +874,6 @@
             preRun: function() {
                 Module["addRunDependency"]("isle");
                 Module.running = true;
-                ENV.MY_FILE_ROOT = "/usr/lib/test";
             },
             canvas: (function() {
                 return document.getElementById('canvas');
@@ -1036,9 +1030,9 @@
                 },
 
                 async saveConfig() {
-                    const handle = await this.getFileHandle();
-                    if (!handle) return;
-
+                    // This function now uses an inline Web Worker for maximum compatibility,
+                    // especially with Safari, which does not support createWritable().
+                    
                     let iniContent = '[isle]\n';
                     const elements = this.form.elements;
 
@@ -1064,10 +1058,50 @@
                         }
                     }
                     
-                    const writable = await handle.createWritable();
-                    await writable.write(iniContent);
-                    await writable.close();
-                    console.log('Config saved to', this.filePath);
+                    const workerCode = `
+                        self.onmessage = async (e) => {
+                            if (e.data.action === 'save') {
+                                try {
+                                    const root = await navigator.storage.getDirectory();
+                                    const handle = await root.getFileHandle(e.data.filePath, { create: true });
+                                    const accessHandle = await handle.createSyncAccessHandle();
+                                    const encoder = new TextEncoder();
+                                    const encodedData = encoder.encode(e.data.content);
+
+                                    accessHandle.truncate(0);
+                                    accessHandle.write(encodedData, { at: 0 });
+                                    accessHandle.flush();
+                                    accessHandle.close();
+
+                                    self.postMessage({ status: 'success', message: 'Config saved to ' + e.data.filePath });
+                                } catch (err) {
+                                    self.postMessage({ status: 'error', message: 'Failed to save config: ' + err.message });
+                                }
+                            }
+                        };
+                    `;
+
+                    const blob = new Blob([workerCode], { type: 'application/javascript' });
+                    const workerUrl = URL.createObjectURL(blob);
+                    const worker = new Worker(workerUrl);
+
+                    worker.postMessage({
+                        action: 'save',
+                        content: iniContent,
+                        filePath: this.filePath
+                    });
+
+                    worker.onmessage = (e) => {
+                        console.log(e.data.message);
+                        URL.revokeObjectURL(workerUrl); // Clean up the temporary URL
+                        worker.terminate();
+                    };
+
+                    worker.onerror = (e) => {
+                        console.error('An error occurred in the config-saving worker:', e.message);
+                        URL.revokeObjectURL(workerUrl);
+                        worker.terminate();
+                    };
                 },
 
                 async loadConfig() {
