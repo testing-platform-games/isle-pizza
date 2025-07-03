@@ -971,6 +971,11 @@
                 document.documentElement.style.overflow = 'hidden';
                 document.documentElement.style.overscrollBehavior = 'none';
 
+                Module["disableOffscreenCanvases"] = document.getElementById('renderer-select').value == "0 0x682656f3 0x0 0x0 0x2000000";
+                if (Module["disableOffscreenCanvases"]) {
+                    console.log('Disabled OffscreenCanvas for Software rendering');
+                }
+
                 Module["removeRunDependency"]("isle");
                 emscriptenCanvas.focus();
             });
