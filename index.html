@@ -588,6 +588,21 @@
             color: #888;
         }
 
+        .error-box {
+            padding: 15px 20px;
+            margin-bottom: 25px;
+            border-left: 3px solid #ff0011;
+            background-color: #1c1c1c;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .error-box p {
+            font-style: italic;
+            color: #e0e0e0;
+            margin: 0;
+            font-size: 1em;
+        }
+
         /* Responsive adjustments */
         @media (max-width: 768px) {
             #install-video { width: 260px; }
@@ -678,11 +693,14 @@
         
         <div id="configure-page" class="page-content">
             <span class="page-back-button" role="button" aria-label="Go back to main menu">← Back</span>
+            <blockquote id="opfs-disabled" class="error-box" style="display:none;">
+                <p>OPFS is disabled in this browser. Default configuration will apply. If you are using a Firefox Private window, please change to a regular window instead to change configuration.</p>
+            </blockquote>
             <div class="page-inner-content">
                 <div class="config-art-panel">
                     <img src="shark.webp" alt="LEGO Island Shark and Brickster">
                 </div>
-                <form class="config-form">
+                <form id="config-form" class="config-form">
                     <div class="config-section">
                         <h3 class="config-legend">Game</h3>
                         <div class="form-grid">
@@ -1059,6 +1077,10 @@
                         return await root.getFileHandle(this.filePath, { create: true });
                     } catch (e) {
                         console.error("OPFS not available or permission denied.", e);
+                        document.getElementById('opfs-disabled').style.display = '';
+                        document.getElementById('config-form').querySelectorAll('input, select').forEach(element => {
+                            element.disabled = true;
+                        });
                         return null;
                     }
                 },
