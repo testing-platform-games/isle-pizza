@@ -1264,6 +1264,15 @@
                     document.exitFullscreen();
                 }
             });
+
+            // Event listener for changes in fullscreen state (e.g., F11 or Esc key)
+            document.addEventListener('fullscreenchange', () => {
+                if (document.fullscreenElement) {
+                    fullscreenElement.checked = true;
+                } else {
+                    windowedElement.checked = true;
+                }
+            });
         });
     </script>
 
