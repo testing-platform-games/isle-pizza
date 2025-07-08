@@ -789,8 +789,8 @@
                                 <label class="form-group-label">Renderer</label>
                                 <div class="select-wrapper">
                                      <select id="renderer-select" name="3D Device ID">
-                                        <option value="0 0x682656f3 0x0 0x0 0x2000000" selected>Software</option>
-                                        <option value="0 0x682656f3 0x0 0x0 0x4000000">WebGL (experimental)</option>
+                                        <option value="0 0x682656f3 0x0 0x0 0x2000000">Software</option>
+                                        <option value="0 0x682656f3 0x0 0x0 0x4000000" selected>WebGL</option>
                                      </select>
                                 </div>
                             </div>
@@ -1002,10 +1002,8 @@
                 document.documentElement.style.overflow = 'hidden';
                 document.documentElement.style.overscrollBehavior = 'none';
 
-                Module["disableOffscreenCanvases"] = document.getElementById('renderer-select').value == "0 0x682656f3 0x0 0x0 0x2000000";
-                if (Module["disableOffscreenCanvases"]) {
-                    console.log('Disabled OffscreenCanvas for Software rendering');
-                }
+                Module["disableOffscreenCanvases"] ||= document.getElementById('renderer-select').value == "0 0x682656f3 0x0 0x0 0x2000000";
+                console.log("disableOffscreenCanvases: " + Module["disableOffscreenCanvases"]);
 
                 Module["removeRunDependency"]("isle");
                 emscriptenCanvas.focus();
