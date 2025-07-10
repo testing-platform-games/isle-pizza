@@ -722,7 +722,7 @@
                                      </select>
                                 </div>
                             </div>
-                            <div class="form-group">
+                            <div class="form-group" id="window-form">
                                 <label class="form-group-label">Window</label>
                                 <div class="radio-group option-list">
                                     <div class="option-item">
@@ -1248,31 +1248,36 @@
                  history.replaceState({ page: 'main' }, '', window.location.pathname);
             }
 
-            const fullscreenElement = document.getElementById('window-fullscreen');
-            const windowedElement = document.getElementById('window-windowed');
+            if (document.documentElement.requestFullscreen) {
+                const fullscreenElement = document.getElementById('window-fullscreen');
+                const windowedElement = document.getElementById('window-windowed');
 
-            fullscreenElement.addEventListener('change', () => {
-                if (fullscreenElement.checked) {
-                    document.documentElement.requestFullscreen().catch(err => {
-                        console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
-                    });
-                }
-            });
+                fullscreenElement.addEventListener('change', () => {
+                    if (fullscreenElement.checked) {
+                        document.documentElement.requestFullscreen().catch(err => {
+                            console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+                        });
+                    }
+                });
 
-            windowedElement.addEventListener('change', () => {
-                if (windowedElement.checked && document.fullscreenElement) {
-                    document.exitFullscreen();
-                }
-            });
+                windowedElement.addEventListener('change', () => {
+                    if (windowedElement.checked && document.fullscreenElement) {
+                        document.exitFullscreen();
+                    }
+                });
 
-            // Event listener for changes in fullscreen state (e.g., F11 or Esc key)
-            document.addEventListener('fullscreenchange', () => {
-                if (document.fullscreenElement) {
-                    fullscreenElement.checked = true;
-                } else {
-                    windowedElement.checked = true;
-                }
-            });
+                // Event listener for changes in fullscreen state (e.g., F11 or Esc key)
+                document.addEventListener('fullscreenchange', () => {
+                    if (document.fullscreenElement) {
+                        fullscreenElement.checked = true;
+                    } else {
+                        windowedElement.checked = true;
+                    }
+                });
+            }
+            else {
+                document.getElementById('window-form').style.display = 'none';
+            }
         });
     </script>
 
