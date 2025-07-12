@@ -66,7 +66,6 @@
         }
 
         /* Both canvas and overlay will share these sizing rules and grid placement */
-        #canvas,
         #loading-gif-overlay {
             grid-column: 1 / -1;
             grid-row: 1 / -1;
@@ -80,9 +79,13 @@
         }
 
         #canvas {
+            display: none !important;
+            grid-column: 1 / -1;
+            grid-row: 1 / -1;
             background-color: #000000;
             border: none;
             z-index: 1; /* Canvas is below the loading overlay */
+            outline: none;
         }
 
         #loading-gif-overlay {
@@ -735,6 +738,40 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="form-group">
+                                <label class="form-group-label">
+                                    Aspect Ratio
+                                    <span class="tooltip-trigger">?
+                                        <span class="tooltip-content">Choose Original (4:3) to preserve the classic aspect ratio with black bars, or select Widescreen to stretch the image to fit your display.</span>
+                                </label>
+                                <div class="radio-group option-list">
+                                    <div class="option-item">
+                                        <input type="radio" id="aspect-original" value="1" name="Original Aspect Ratio" checked>
+                                        <label for="aspect-original">Original (4:3)</label>
+                                    </div>
+                                    <div class="option-item">
+                                        <input type="radio" id="aspect-wide" value="0" name="Original Aspect Ratio">
+                                        <label for="aspect-wide">Widescreen</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-group-label">
+                                    Resolution
+                                    <span class="tooltip-trigger">?
+                                        <span class="tooltip-content">Choose Original (640 x 480) to preserve the classic resolution, or select Maximum to render in the highest quality.</span>
+                                </label>
+                                <div class="radio-group option-list">
+                                    <div class="option-item">
+                                        <input type="radio" id="resolution-original" value="1" name="Original Resolution" checked>
+                                        <label for="resolution-original">Original (640 x 480)</label>
+                                    </div>
+                                    <div class="option-item">
+                                        <input type="radio" id="resolution-wide" value="0" name="Original Resolution">
+                                        <label for="resolution-wide">Maximum</label>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="config-section">
@@ -1009,7 +1046,6 @@
                 
                 mainContainer.style.display = 'none';
                 canvasWrapper.style.display = 'grid';
-                emscriptenCanvas.style.display = 'block';
 
                 document.documentElement.style.overflow = 'hidden';
                 document.documentElement.style.overscrollBehavior = 'none';
@@ -1026,6 +1062,7 @@
                 // Intro animation is ready
                 if (event.detail.objectName == 'Lego_Smk' && event.detail.tickleState == 1) {
                     loadingGifOverlay.style.display = 'none';
+                    emscriptenCanvas.style.setProperty('display', 'block', 'important');
                 }
                 else if (progressUpdates < 1003) {
                     progressUpdates++;
