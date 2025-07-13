@@ -774,6 +774,29 @@
                             </div>
                         </div>
                     </div>
+                    <div class="config-section" id="input-section">
+                        <h3 class="config-legend">Input</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-group-label">
+                                    Touch Control Scheme
+                                    <span class="tooltip-trigger">?
+                                        <span class="tooltip-content">
+                                        <div><strong>Virtual Gamepad (Recommended):</strong> Slide your finger to move and turn.</div><br>
+                                        <div><strong>Virtual Arrow Keys:</strong> Tap screen areas to move. The top moves forward, the bottom turns or moves back.</div><br>
+                                        <div><strong>Virtual Mouse:</strong> Emulates classic mouse controls with touch.</div>
+                                    </span>
+                                </label>
+                                <div class="select-wrapper">
+                                     <select id="touch-type-select" name="Touch Scheme">
+                                        <option value="0">Virtual Mouse</option>
+                                        <option value="1">Virtual Arrow Keys</option>
+                                        <option value="2" selected>Virtual Gamepad</option>
+                                     </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <div class="config-section">
                         <h3 class="config-legend">Detail</h3>
                         <div class="form-grid">
@@ -1314,6 +1337,10 @@
             }
             else {
                 document.getElementById('window-form').style.display = 'none';
+            }
+
+            if (!window.matchMedia('(any-pointer: coarse)').matches) {
+                document.getElementById('input-section').style.display = 'none';
             }
         });
     </script>
