@@ -774,10 +774,10 @@
                             </div>
                         </div>
                     </div>
-                    <div class="config-section" id="input-section">
+                    <div class="config-section">
                         <h3 class="config-legend">Input</h3>
                         <div class="form-grid">
-                            <div class="form-group">
+                            <div class="form-group" id="touch-section">
                                 <label class="form-group-label">
                                     Touch Control Scheme
                                     <span class="tooltip-trigger">?
@@ -793,6 +793,21 @@
                                         <option value="1">Virtual Arrow Keys</option>
                                         <option value="2" selected>Virtual Gamepad</option>
                                      </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-group-label">
+                                    Options
+                                    <span class="tooltip-trigger">?
+                                        <span class="tooltip-content">
+                                        <div><strong>Haptic feedback:</strong> On supported devices and browsers, this provides physical feedback, like a vibration, while you play the game.</div>
+                                    </span>
+                                </label>
+                                <div class="checkbox-group option-list">
+                                    <div class="option-item">
+                                         <input type="checkbox" id="check-haptic" name="Haptic" checked>
+                                         <label for="check-haptic">Haptic feedback</label>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -842,7 +857,7 @@
                                         <span class="tooltip-content">Maximum Level of Detail (LOD). A higher setting will cause higher quality textures to be drawn regardless of distance.</span>
                                     </span>
                                 </label>
-                                <input type="range" id="max-lod" name="Max LOD" min="0" max="5" step="0.1" value="3.6">
+                                <input type="range" id="max-lod" name="Max LOD" min="0" max="6" step="0.1" value="3.6">
                             </div>
                             <div class="form-group">
                                 <label class="form-group-label" for="max-allowed-extras">
@@ -1340,7 +1355,7 @@
             }
 
             if (!window.matchMedia('(any-pointer: coarse)').matches) {
-                document.getElementById('input-section').style.display = 'none';
+                document.getElementById('touch-section').style.display = 'none';
             }
         });
     </script>
