@@ -362,8 +362,10 @@ document.addEventListener('DOMContentLoaded', function () {
     progressCircular.className = 'progress-circular';
     controlsContainer.appendChild(progressCircular);
 
-    installBtn.addEventListener('click', () => {
-        if (navigator.serviceWorker.controller) {
+    installBtn.addEventListener('click', async () => {
+        if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+            await requestPersistentStorage();
+
             const selectedLanguage = languageSelect.value;
             installBtn.style.display = 'none';
             uninstallBtn.style.display = 'none';
@@ -389,6 +391,20 @@ document.addEventListener('DOMContentLoaded', function () {
     languageSelect.addEventListener('change', () => {
         checkInitialCacheStatus();
     });
+
+    async function requestPersistentStorage() {
+        if (navigator.storage && navigator.storage.persist) {
+            const isPersisted = await navigator.storage.persisted();
+            if (!isPersisted) {
+                const wasGranted = await navigator.storage.persist();
+                if (wasGranted) {
+                    console.log('Persistent storage was granted.');
+                } else {
+                    console.log('Persistent storage request was denied.');
+                }
+            }
+        }
+    }
 
     function checkInitialCacheStatus() {
         if (navigator.serviceWorker.controller) {

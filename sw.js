@@ -13,9 +13,9 @@ const coreAppFiles = [
     '/', '/index.html', '/cancel_off.webp', '/cancel_on.webp', '/cdspin.gif',
     '/configure_off.webp', '/configure_on.webp', '/favicon.png', '/favicon.svg',
     '/free_stuff_off.webp', '/free_stuff_on.webp', '/install_off.webp', '/install_on.webp',
-    '/island.webp', '/isle.js', '/isle.wasm', '/poster.pdf', '/read_me_off.webp', 
+    '/island.webp', '/isle.js', '/isle.wasm', '/poster.pdf', '/read_me_off.webp',
     '/read_me_on.webp', '/run_game_off.webp', '/run_game_on.webp', '/shark.webp',
-    '/uninstall_off.webp', '/uninstall_on.webp', 'app.js', 'style.css', 'manifest.json'
+    '/uninstall_off.webp', '/uninstall_on.webp', '/app.js', '/style.css', '/manifest.json'
 ];
 
 const gameFiles = [
@@ -45,6 +45,7 @@ self.addEventListener('install', (event) => {
             });
         })
     );
+    self.skipWaiting();
 });
 
 registerRoute(
@@ -131,43 +132,36 @@ async function installLanguagePack(language, client) {
 
         for (const file of fileMetadata) {
             const request = new Request(file.url, { headers: { 'Accept-Language': language } });
+            const response = await fetch(request);
 
-            try {
-                const response = await fetch(request);
-
-                if (!response.ok || !response.body) {
-                    throw new Error(`Failed to fetch ${file.url}`);
-                }
-
-                const [streamForCaching, streamForProgress] = response.body.tee();
-
-                const responseToCache = new Response(streamForCaching, response);
-                const cachePromise = cache.put(request, responseToCache);
-
-                const reader = streamForProgress.getReader();
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-
-                    bytesDownloaded += value.length;
-                    const now = Date.now();
-
-                    if (now - lastProgressUpdate > THROTTLE_MS) {
-                        lastProgressUpdate = now;
-                        client.postMessage({
-                            action: 'install_progress',
-                            progress: (bytesDownloaded / totalBytesToDownload) * 100,
-                            language: language
-                        });
-                    }
-                }
-
-                await cachePromise;
-            } catch (error) {
-                console.error("Aborting installation due to a persistent error:", error);
-                await caches.delete(cacheName);
-                client.postMessage({ action: 'install_failed', language: language });
+            if (!response.ok || !response.body) {
+                throw new Error(`Failed to fetch ${file.url}`);
             }
+
+            const [streamForCaching, streamForProgress] = response.body.tee();
+
+            const responseToCache = new Response(streamForCaching, response);
+            const cachePromise = cache.put(request, responseToCache);
+
+            const reader = streamForProgress.getReader();
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                bytesDownloaded += value.length;
+                const now = Date.now();
+
+                if (now - lastProgressUpdate > THROTTLE_MS) {
+                    lastProgressUpdate = now;
+                    client.postMessage({
+                        action: 'install_progress',
+                        progress: (bytesDownloaded / totalBytesToDownload) * 100,
+                        language: language
+                    });
+                }
+            }
+
+            await cachePromise;
         }
 
         client.postMessage({
@@ -177,8 +171,9 @@ async function installLanguagePack(language, client) {
         });
         client.postMessage({ action: 'install_complete', success: true, language: language });
     } catch (error) {
-        console.error('Error during language pack installation:', error);
-        client.postMessage({ action: 'install_failed', success: false, language: language, error: error.message });
+        console.error("Aborting installation due to an error:", error);
+        await caches.delete(cacheName);
+        client.postMessage({ action: 'install_failed', language: language });
     }
 }
 
@@ -214,5 +209,5 @@ self.addEventListener('activate', (event) => {
             );
         })
     );
-    self.clients.claim();
+    event.waitUntil(self.clients.claim());
 });
