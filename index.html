@@ -1,12 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>LEGO® Island</title>
 
-    <meta name="description" content="Play the classic 1997 PC game LEGO® Island directly in your web browser! This fan-made web port, built with Emscripten from the isledecomp project, brings the beloved adventure back to life.">
-    <meta name="keywords" content="LEGO Island, LEGO, classic game, 1997, web port, browser game, Emscripten, isledecomp, retro gaming, play online, Infomaniac, Brickster, Pepper Roni">
+    <link rel="preload" href="style.css" as="style">
+    <link rel="preload" href="app.js" as="script">
+    <link rel="preload" href="isle.js" as="script">
+    <link rel="preload" href="isle.wasm" as="fetch" crossorigin>
+    <link rel="preload" href="island.webp" as="image">
+
+    <meta name="description"
+        content="Play the classic 1997 PC game LEGO® Island directly in your web browser! This fan-made web port, built with Emscripten from the isledecomp project, brings the beloved adventure back to life.">
+    <meta name="keywords"
+        content="LEGO Island, LEGO, classic game, 1997, web port, browser game, Emscripten, isledecomp, retro gaming, play online, Infomaniac, Brickster, Pepper Roni">
     <meta name="author" content="isledecomp/isle.pizza">
     <meta name="robots" content="index, follow">
     <meta name="twitter:card" content="summary_large_image">
@@ -22,642 +31,12 @@
     <meta property="og:image" content="https://isle.pizza/island.webp">
     <meta property="og:site_name" content="LEGO Island Web Port">
 
+    <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" href="favicon.png">
     <link rel="canonical" href="https://isle.pizza">
-
-    <style>
-        html {
-            height: 100%;
-        }
-
-        body {
-            margin: 0;
-            background-color: #000000; /* Completely black */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow-y: auto;
-            padding: 10px;
-            box-sizing: border-box;
-            font-family: Arial, sans-serif;
-        }
-
-        #canvas-wrapper {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100dvh;
-            background-color: #000000;
-            outline: none;
-            place-items: center;
-
-            touch-action: none;
-            -webkit-touch-callout: none;
-            user-select: none;
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            -khtml-user-select: none;
-            -webkit-user-drag: none;
-            user-drag: none;
-        }
-
-        /* Both canvas and overlay will share these sizing rules and grid placement */
-        #loading-gif-overlay {
-            grid-column: 1 / -1;
-            grid-row: 1 / -1;
-            width: 100%;
-            height: 100%;
-            max-width: calc(100dvh * (640 / 480));
-            max-height: calc(100dvw * (480 / 640));
-            aspect-ratio: 640 / 480;
-            box-sizing: border-box;
-            outline: none;
-        }
-
-        #canvas {
-            display: none !important;
-            grid-column: 1 / -1;
-            grid-row: 1 / -1;
-            background-color: #000000;
-            border: none;
-            z-index: 1; /* Canvas is below the loading overlay */
-            outline: none;
-        }
-
-        #loading-gif-overlay {
-            background-color: #000000;
-            border: none;
-            z-index: 2;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .quote-block {
-            max-width: 80%;
-            text-align: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        }
-
-        .quote-block .quote-text {
-            font-size: 0.5em;
-            color: #f0f0f0;
-            margin-bottom: 10px;
-            font-style: italic;
-            line-height: 1.4;
-        }
-
-        .quote-block .quote-attribution {
-            font-size: 0.1em;
-            color: #c0c0c0;
-            text-align: right;
-        }
-
-        .loading-info-text {
-            margin-top: 15px; /* Space below the quote block */
-            padding: 10px 15px;
-            max-width: 280px; /* Slightly adjust if needed, to align nicely with quote block */
-            width: 80%;      /* Similar to quote block or adjust */
-            font-size: 0.8em; /* Smaller, informative text */
-            color: #b0b0b0;   /* A lighter gray, like the attribution */
-            line-height: 1.5;
-            text-align: center; /* Text inside this block will be left-aligned for readability */
-            border-top: 1px dashed #444; /* Optional separator */
-            padding-top: 15px; /* Space above text if border-top is used */
-        }
-
-        .loading-info-text p {
-            margin: 0 0 8px 0; /* Spacing between paragraphs in this block */
-        }
-        .loading-info-text p:last-child {
-            margin-bottom: 0;
-        }
-
-        .status-message-bar {
-            margin-top: 20px; /* Space below the info text */
-            padding: 8px 12px;
-            width: 85%; /* Will be right-aligned by parent flex #loading-gif-overlay */
-            max-width: 340px; /* Control its max width */
-            background-color: #181818; /* A very dark gray */
-            color: #c0c0c0;       /* Light gray text for general status */
-            font-family: 'Consolas', 'Menlo', 'Courier New', Courier, monospace; /* Monospaced for a "status" feel */
-            font-size: 0.75em;
-            border-radius: 4px;
-            text-align: center; /* Text within the bar itself */
-            line-height: 1.4;
-            border: 1px solid #303030; /* Subtle border */
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-        }
-
-        .status-message-bar code {
-            color: #FFD700; /* LEGO yellow-ish for emphasis */
-            background-color: #2a2a2a; /* Slightly lighter background for the code part */
-            padding: 1px 5px;
-            border-radius: 3px;
-            font-weight: bold;
-        }
-
-        #main-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 25px;
-            background-color: #000000; /* Completely black */
-            padding: 20px;
-            border-radius: 10px;
-            max-width: 95vw;
-            box-shadow: none;
-            width: 900px; /* Give a max-width for larger screens */
-            max-width: 95vw;
-        }
-
-        #top-content {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 20px;
-            width: 100%;
-        }
-
-        .video-container {
-            position: relative;
-            display: flex;
-            justify-content: center;
-        }
-
-        #install-video {
-            max-width: 100%;
-            width: 300px;
-            height: auto; /* Height determined by width and aspect-ratio */
-            display: block;
-            aspect-ratio: 1 / 1; /* Based on your 260x260 ffprobe data */
-            border: none;
-            box-sizing: border-box;
-        }
-
-        #sound-toggle-emoji {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            font-size: 26px;
-            color: white;
-            text-shadow: 0 0 3px black;
-            cursor: pointer;
-            opacity: 0.7;
-            transition: opacity 0.2s ease-in-out;
-            z-index: 10;
-            padding: 2px;
-            user-select: none;
-        }
-
-        #sound-toggle-emoji:hover {
-            opacity: 1;
-        }
-
-        #island-logo-img {
-            max-width: 100%;
-            width: 400px; /* CSS width */
-            height: auto; /* Height determined by width and aspect-ratio */
-            display: block;
-            aspect-ratio: 567 / 198; /* Based on your HTML width/height for the logo */
-        }
-
-        #controls-wrapper {
-            display: flex;
-            justify-content: space-around;
-            align-items: flex-end;
-            flex-wrap: wrap;
-            gap: 10px;
-            width: 100%;
-            max-width: 700px;
-            padding: 10px 0;
-        }
-
-        .control-img {
-            cursor: pointer;
-            height: auto; /* Height determined by width/max-width and aspect-ratio */
-            max-width: 18%; /* Responsive width constraint */
-            display: block; /* Consistent box model */
-            transition: transform 0.1s ease-in-out;
-        }
-
-        /* Specific aspect ratios for each control image based on your HTML attributes */
-        #run-game-btn   { aspect-ratio: 135 / 164; }
-        #configure-btn  { aspect-ratio: 130 / 147; }
-        #free-stuff-btn { aspect-ratio: 134 / 149; }
-        #read-me-btn    { aspect-ratio: 134 / 149; }
-        #cancel-btn     { aspect-ratio: 93 / 145;  }
-
-        .control-img:hover {
-            transform: scale(1.08);
-        }
-
-        .footer-disclaimer {
-            font-size: 0.7em;
-            color: #888888;
-            text-align: center;
-            line-height: 1.4;
-            max-width: 600px;
-            width: 90%;
-        }
-
-        .footer-disclaimer p {
-            margin: 4px 0;
-        }
-        
-        .page-content {
-            display: none; /* Initially hidden */
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            color: #f0f0f0;
-            width: 100%;
-        }
-        
-        .page-back-button {
-            display: block;
-            width: 100%;
-            text-align: left;
-            font-size: 24px;
-            font-weight: bold;
-            color: white;
-            text-decoration: none;
-            cursor: pointer;
-            opacity: 0.8;
-            transition: all 0.2s ease-in-out;
-            margin-bottom: 20px;
-        }
-        
-        .page-back-button:hover {
-            opacity: 1;
-            color: #FFD700;
-        }
-
-        .page-inner-content {
-            max-width: 700px;
-            width: 100%;
-            text-align: center;
-        }
-        
-        .page-inner-content h1 {
-            color: #FFD700; /* LEGO yellow */
-            font-size: 2.5em;
-            margin-bottom: 20px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-        }
-        
-        .page-inner-content p {
-            color: #c0c0c0;
-            line-height: 1.6;
-            font-size: 1.1em;
-            margin-bottom: 15px;
-            text-align: left;
-        }
-
-        .page-inner-content a {
-            color: #FFD700;
-            text-decoration: none;
-        }
-
-        .page-inner-content a:hover {
-            text-decoration: underline;
-        }
-
-        /* REVISED Styles for Configure Page */
-        #configure-page .page-inner-content {
-            display: flex;
-            background-color: #181818;
-            border: 1px solid #303030;
-            border-radius: 8px;
-        }
-
-        .config-art-panel {
-            flex: 0 0 180px; /* Fixed width for the image panel */
-            border-radius: 8px 0 0 8px; /* Apply radius here */
-        }
-        
-        .config-art-panel img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: block;
-            border-radius: 8px 0 0 8px; /* Ensure image respects radius */
-        }
-        
-        .config-form {
-            flex-grow: 1;
-            padding: 25px;
-        }
-
-        .config-section {
-            margin-bottom: 25px;
-        }
-        .config-section:last-child {
-            margin-bottom: 0;
-        }
-
-        .config-legend {
-            color: #FFD700;
-            font-size: 1.1em;
-            font-weight: bold;
-            margin: 0 0 15px 0;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #444;
-        }
-        
-        .form-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px 30px;
-        }
-        
-        .form-group-label {
-             position: relative; /* Needed for tooltip positioning */
-             display: inline-flex;
-             align-items: center;
-             gap: 8px;
-             color: #e0e0e0;
-             font-weight: bold;
-             font-size: 0.9em;
-             margin-bottom: 10px;
-        }
-
-        .tooltip-trigger {
-            position: relative;
-            cursor: pointer;
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            background-color: #444;
-            color: #eee;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            font-weight: bold;
-            user-select: none;
-        }
-
-        .tooltip-content {
-            position: absolute;
-            bottom: 140%;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 220px;
-            background-color: #2a2a2a;
-            color: #f0f0f0;
-            padding: 10px;
-            border-radius: 5px;
-            font-size: 0.85em;
-            font-weight: normal;
-            line-height: 1.4;
-            text-align: left;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
-            z-index: 20;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.2s, visibility 0.2s;
-            pointer-events: none;
-        }
-
-        .tooltip-trigger:hover > .tooltip-content,
-        .tooltip-trigger.active > .tooltip-content {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        .option-list {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .option-item {
-            display: flex;
-            align-items: center;
-        }
-        
-        .option-item input {
-            position: absolute;
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-        
-        .option-item label {
-            display: inline-flex;
-            align-items: center;
-            cursor: pointer;
-            font-size: 0.9em;
-            color: #c0c0c0;
-        }
-        
-        .option-item label::before {
-            content: '';
-            width: 14px;
-            height: 14px;
-            margin-right: 10px;
-            background-color: #333;
-            border: 1px solid #555;
-            transition: all 0.2s ease;
-        }
-
-        .option-item input:checked + label::before {
-            background-color: #FFD700;
-            border-color: #fff;
-            box-shadow: 0 0 5px #FFD700;
-        }
-        
-        .radio-group .option-item label::before { border-radius: 50%; }
-        .checkbox-group .option-item label::before { border-radius: 3px; }
-
-        input[type="range"] {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 100%;
-            height: 6px;
-            background: #444;
-            outline: none;
-            border-radius: 6px;
-        }
-
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 18px;
-            height: 18px;
-            background: #FFD700;
-            cursor: pointer;
-            border-radius: 50%;
-            border: 2px solid #000;
-        }
-
-        input[type="range"]::-moz-range-thumb {
-            width: 18px;
-            height: 18px;
-            background: #FFD700;
-            cursor: pointer;
-            border-radius: 50%;
-            border: 2px solid #000;
-        }
-
-        .select-wrapper { position: relative; }
-        
-        .select-wrapper::after {
-            content: '▼';
-            position: absolute;
-            top: 50%;
-            right: 12px;
-            transform: translateY(-50%);
-            color: #FFD700;
-            pointer-events: none;
-        }
-        
-        select {
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
-            display: block;
-            width: 100%;
-            padding: 10px 15px;
-            font-size: 0.9em;
-            color: #c0c0c0;
-            background-color: #333;
-            border: 1px solid #555;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        .resource-list {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            width: 100%;
-        }
-
-        .resource-item {
-            display: block;
-            background-color: #1c1c1c;
-            border: 1px solid #333;
-            border-radius: 8px;
-            padding: 20px;
-            text-decoration: none;
-            transition: background-color 0.2s ease, border-color 0.2s ease;
-        }
-
-        .resource-item:hover {
-            background-color: #252525;
-            border-color: #555;
-        }
-
-        .resource-item h3 {
-            margin: 0 0 8px 0;
-            color: #FFD700;
-            font-size: 1.2em;
-        }
-
-        .resource-item p {
-            margin: 0;
-            color: #b0b0b0;
-            font-size: 0.9em;
-            line-height: 1.5;
-        }
-
-        .page-quote {
-            padding: 15px 20px;
-            margin-bottom: 25px;
-            border-left: 3px solid #FFD700;
-            background-color: #1c1c1c;
-            border-radius: 0 8px 8px 0;
-        }
-
-        .page-quote p {
-            font-style: italic;
-            color: #e0e0e0;
-            margin: 0;
-            font-size: 1em;
-        }
-
-        .page-quote footer {
-            text-align: right;
-            margin-top: 10px;
-            font-size: 0.9em;
-            color: #888;
-        }
-
-        .error-box {
-            padding: 15px 20px;
-            margin-bottom: 25px;
-            border-left: 3px solid #ff0011;
-            background-color: #1c1c1c;
-            border-radius: 0 8px 8px 0;
-        }
-
-        .error-box p {
-            font-style: italic;
-            color: #e0e0e0;
-            margin: 0;
-            font-size: 1em;
-        }
-
-        /* Responsive adjustments */
-        @media (max-width: 768px) {
-            #install-video { width: 260px; }
-            #island-logo-img { width: 360px; }
-            .control-img { max-width: 19%; }
-            #sound-toggle-emoji { font-size: 24px; top: 8px; left: 8px; }
-
-            .loading-info-text {
-                max-width: 90%;
-                font-size: 0.75em;
-            }
-
-            .page-inner-content h1 { font-size: 2em; }
-            .page-inner-content p { font-size: 1em; }
-
-            .config-art-panel {
-                display: none; /* Hide the image panel on smaller screens */
-            }
-             #configure-page .page-inner-content {
-                background-color: transparent;
-                border: none;
-                padding: 0;
-             }
-             .config-form {
-                background-color: #181818;
-                border: 1px solid #303030;
-                border-radius: 8px;
-             }
-        }
-
-         @media (max-width: 480px) {
-            #install-video { width: 90%; max-width: 280px; }
-            #island-logo-img { width: 90%; max-width: 320px; }
-            .control-img { max-width: 45%; margin: 3px 0; }
-            #sound-toggle-emoji { font-size: 22px; top: 6px; left: 6px; }
-
-            .loading-info-text {
-                max-width: 95%;
-                font-size: 0.7em;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-
-            .page-content .page-back-button { font-size: 22px; }
-
-            .form-grid {
-                 grid-template-columns: 1fr;
-                 gap: 25px;
-             }
-        }
-    </style>
 </head>
+
 <body>
     <div id="main-container">
         <div id="top-content">
@@ -673,31 +52,41 @@
 
         <div id="controls-wrapper">
             <img class="control-img" width="135" height="164" id="run-game-btn" src="run_game_off.webp" alt="Run Game"
-                 data-off="run_game_off.webp" data-on="run_game_on.webp">
-            <img class="control-img" width="130" height="147" id="configure-btn" src="configure_off.webp" alt="Configure"
-                 data-off="configure_off.webp" data-on="configure_on.webp" data-target="#configure-page">
-            <img class="control-img" width="134" height="149" id="free-stuff-btn" src="free_stuff_off.webp" alt="Free Stuff"
-                 data-off="free_stuff_off.webp" data-on="free_stuff_on.webp" data-target="#free-stuff-page">
+                data-off="run_game_off.webp" data-on="run_game_on.webp">
+            <img class="control-img" width="130" height="147" id="configure-btn" src="configure_off.webp"
+                alt="Configure" data-off="configure_off.webp" data-on="configure_on.webp" data-target="#configure-page">
+            <img class="control-img" width="134" height="149" id="free-stuff-btn" src="free_stuff_off.webp"
+                alt="Free Stuff" data-off="free_stuff_off.webp" data-on="free_stuff_on.webp"
+                data-target="#free-stuff-page">
             <img class="control-img" width="134" height="149" id="read-me-btn" src="read_me_off.webp" alt="Read Me"
-                 data-off="read_me_off.webp" data-on="read_me_on.webp" data-target="#read-me-page">
+                data-off="read_me_off.webp" data-on="read_me_on.webp" data-target="#read-me-page">
             <img class="control-img" width="93" height="145" id="cancel-btn" src="cancel_off.webp" alt="Cancel"
-                 data-off="cancel_off.webp" data-on="cancel_on.webp" onclick="location.href = 'https://legoisland.org';">
+                data-off="cancel_off.webp" data-on="cancel_on.webp" onclick="location.href = 'https://legoisland.org';">
         </div>
-        
+
         <div id="read-me-page" class="page-content">
             <span class="page-back-button" role="button" aria-label="Go back to main menu">← Back</span>
             <div class="page-inner-content">
                 <h1>Read Me</h1>
-                <p>Welcome to the LEGO Island web port project! This is a recreation of the classic 1997 PC game, rebuilt to run in modern web browsers using Emscripten.</p>
-                <p>This incredible project stands on the shoulders of giants. It was made possible by the original <a href="https://github.com/isledecomp/isle" target="_blank" rel="noopener noreferrer">decompilation project</a>, which was then adapted into a <a href="https://github.com/isledecomp/isle-portable" target="_blank" rel="noopener noreferrer">portable version</a>. This represents a year-long effort, involving thousands of hours of work from many awesome contributors dedicated to preserving this piece of gaming history.</p>
-                <p>Our goal is to make this classic accessible to everyone. The project is still in development, so you may encounter bugs. Your patience and feedback are greatly appreciated!</p>
+                <p>Welcome to the LEGO Island web port project! This is a recreation of the classic 1997 PC game,
+                    rebuilt to run in modern web browsers using Emscripten.</p>
+                <p>This incredible project stands on the shoulders of giants. It was made possible by the original <a
+                        href="https://github.com/isledecomp/isle" target="_blank"
+                        rel="noopener noreferrer">decompilation project</a>, which was then adapted into a <a
+                        href="https://github.com/isledecomp/isle-portable" target="_blank"
+                        rel="noopener noreferrer">portable version</a>. This represents a year-long effort, involving
+                    thousands of hours of work from many awesome contributors dedicated to preserving this piece of
+                    gaming history.</p>
+                <p>Our goal is to make this classic accessible to everyone. The project is still in development, so you
+                    may encounter bugs. Your patience and feedback are greatly appreciated!</p>
             </div>
         </div>
-        
+
         <div id="configure-page" class="page-content">
             <span class="page-back-button" role="button" aria-label="Go back to main menu">← Back</span>
             <blockquote id="opfs-disabled" class="error-box" style="display:none;">
-                <p>OPFS is disabled in this browser. Default configuration will apply. If you are using a Firefox Private window, please change to a regular window instead to change configuration.</p>
+                <p>OPFS is disabled in this browser. Default configuration will apply. If you are using a Firefox
+                    Private window, please change to a regular window instead to change configuration.</p>
             </blockquote>
             <div class="page-inner-content">
                 <div class="config-art-panel">
@@ -710,7 +99,7 @@
                             <div class="form-group">
                                 <label class="form-group-label">Version</label>
                                 <div class="select-wrapper">
-                                     <select id="language-select" name="Language">
+                                    <select id="language-select" name="Language">
                                         <option value="da">Danish</option>
                                         <option value="el">English (1.0)</option>
                                         <option value="en" selected>English (1.1)</option>
@@ -722,14 +111,15 @@
                                         <option value="pt">Portuguese</option>
                                         <option value="ru">Russian</option>
                                         <option value="es">Spanish</option>
-                                     </select>
+                                    </select>
                                 </div>
                             </div>
                             <div class="form-group" id="window-form">
                                 <label class="form-group-label">Window</label>
                                 <div class="radio-group option-list">
                                     <div class="option-item">
-                                        <input type="radio" id="window-windowed" name="window" data-not-ini="true" checked>
+                                        <input type="radio" id="window-windowed" name="window" data-not-ini="true"
+                                            checked>
                                         <label for="window-windowed">Windowed</label>
                                     </div>
                                     <div class="option-item">
@@ -742,11 +132,14 @@
                                 <label class="form-group-label">
                                     Aspect Ratio
                                     <span class="tooltip-trigger">?
-                                        <span class="tooltip-content">Choose Original (4:3) to preserve the classic aspect ratio with black bars, or select Widescreen to stretch the image to fit your display.</span>
+                                        <span class="tooltip-content">Choose Original (4:3) to preserve the classic
+                                            aspect ratio with black bars, or select Widescreen to stretch the image to
+                                            fit your display.</span>
                                 </label>
                                 <div class="radio-group option-list">
                                     <div class="option-item">
-                                        <input type="radio" id="aspect-original" value="1" name="Original Aspect Ratio" checked>
+                                        <input type="radio" id="aspect-original" value="1" name="Original Aspect Ratio"
+                                            checked>
                                         <label for="aspect-original">Original (4:3)</label>
                                     </div>
                                     <div class="option-item">
@@ -759,11 +152,14 @@
                                 <label class="form-group-label">
                                     Resolution
                                     <span class="tooltip-trigger">?
-                                        <span class="tooltip-content">Choose Original (640 x 480) to preserve the classic resolution, or select Maximum to render in the highest quality.</span>
+                                        <span class="tooltip-content">Choose Original (640 x 480) to preserve the
+                                            classic resolution, or select Maximum to render in the highest
+                                            quality.</span>
                                 </label>
                                 <div class="radio-group option-list">
                                     <div class="option-item">
-                                        <input type="radio" id="resolution-original" value="1" name="Original Resolution" checked>
+                                        <input type="radio" id="resolution-original" value="1"
+                                            name="Original Resolution" checked>
                                         <label for="resolution-original">Original (640 x 480)</label>
                                     </div>
                                     <div class="option-item">
@@ -782,17 +178,20 @@
                                     Touch Control Scheme
                                     <span class="tooltip-trigger">?
                                         <span class="tooltip-content">
-                                        <div><strong>Virtual Gamepad (Recommended):</strong> Slide your finger to move and turn.</div><br>
-                                        <div><strong>Virtual Arrow Keys:</strong> Tap screen areas to move. The top moves forward, the bottom turns or moves back.</div><br>
-                                        <div><strong>Virtual Mouse:</strong> Emulates classic mouse controls with touch.</div>
-                                    </span>
+                                            <div><strong>Virtual Gamepad (Recommended):</strong> Slide your finger to
+                                                move and turn.</div><br>
+                                            <div><strong>Virtual Arrow Keys:</strong> Tap screen areas to move. The top
+                                                moves forward, the bottom turns or moves back.</div><br>
+                                            <div><strong>Virtual Mouse:</strong> Emulates classic mouse controls with
+                                                touch.</div>
+                                        </span>
                                 </label>
                                 <div class="select-wrapper">
-                                     <select id="touch-type-select" name="Touch Scheme">
+                                    <select id="touch-type-select" name="Touch Scheme">
                                         <option value="0">Virtual Mouse</option>
                                         <option value="1">Virtual Arrow Keys</option>
                                         <option value="2" selected>Virtual Gamepad</option>
-                                     </select>
+                                    </select>
                                 </div>
                             </div>
                             <div class="form-group">
@@ -800,13 +199,15 @@
                                     Options
                                     <span class="tooltip-trigger">?
                                         <span class="tooltip-content">
-                                        <div><strong>Haptic feedback:</strong> On supported devices and browsers, this provides physical feedback, like a vibration, while you play the game.</div>
-                                    </span>
+                                            <div><strong>Haptic feedback:</strong> On supported devices and browsers,
+                                                this provides physical feedback, like a vibration, while you play the
+                                                game.</div>
+                                        </span>
                                 </label>
                                 <div class="checkbox-group option-list">
                                     <div class="option-item">
-                                         <input type="checkbox" id="check-haptic" name="Haptic" checked>
-                                         <label for="check-haptic">Haptic feedback</label>
+                                        <input type="checkbox" id="check-haptic" name="Haptic" checked>
+                                        <label for="check-haptic">Haptic feedback</label>
                                     </div>
                                 </div>
                             </div>
@@ -819,7 +220,9 @@
                                 <label class="form-group-label">
                                     Island Model Quality
                                     <span class="tooltip-trigger">?
-                                        <span class="tooltip-content">Note: using the "Low" setting will cause the island to disappear. This is not a bug, but the same behavior as present in the original game.</span>
+                                        <span class="tooltip-content">Note: using the "Low" setting will cause the
+                                            island to disappear. This is not a bug, but the same behavior as present in
+                                            the original game.</span>
                                     </span>
                                 </label>
                                 <div class="radio-group option-list">
@@ -854,7 +257,9 @@
                                 <label class="form-group-label" for="max-lod">
                                     Maximum LOD
                                     <span class="tooltip-trigger">?
-                                        <span class="tooltip-content">Maximum Level of Detail (LOD). A higher setting will cause higher quality textures to be drawn regardless of distance.</span>
+                                        <span class="tooltip-content">Maximum Level of Detail (LOD). A higher setting
+                                            will cause higher quality textures to be drawn regardless of
+                                            distance.</span>
                                     </span>
                                 </label>
                                 <input type="range" id="max-lod" name="Max LOD" min="0" max="6" step="0.1" value="3.6">
@@ -863,10 +268,13 @@
                                 <label class="form-group-label" for="max-allowed-extras">
                                     Maximum actors (5..40)
                                     <span class="tooltip-trigger">?
-                                        <span class="tooltip-content">Maximum number of LEGO actors to exist in the world at a time. The game will gradually increase the number of actors until this maximum is reached and while performance is acceptable.</span>
+                                        <span class="tooltip-content">Maximum number of LEGO actors to exist in the
+                                            world at a time. The game will gradually increase the number of actors until
+                                            this maximum is reached and while performance is acceptable.</span>
                                     </span>
                                 </label>
-                                <input type="range" id="max-allowed-extras" name="Max Allowed Extras" min="5" max="40" value="20">
+                                <input type="range" id="max-allowed-extras" name="Max Allowed Extras" min="5" max="40"
+                                    value="20">
                             </div>
                         </div>
                     </div>
@@ -876,41 +284,60 @@
                             <div class="form-group">
                                 <label class="form-group-label">Renderer</label>
                                 <div class="select-wrapper">
-                                     <select id="renderer-select" name="3D Device ID">
+                                    <select id="renderer-select" name="3D Device ID">
                                         <option value="0 0x682656f3 0x0 0x0 0x2000000">Software</option>
                                         <option value="0 0x682656f3 0x0 0x0 0x4000000" selected>WebGL</option>
-                                     </select>
+                                    </select>
                                 </div>
                             </div>
                             <div class="form-group">
                                 <label class="form-group-label">Transition Type</label>
                                 <div class="select-wrapper">
-                                     <select id="transition-type-select" name="Transition Type">
+                                    <select id="transition-type-select" name="Transition Type">
                                         <option value="1">No Animation</option>
                                         <option value="2">Dissolve</option>
                                         <option value="3" selected>Mosaic</option>
                                         <option value="4">Wipe Down</option>
                                         <option value="5">Windows</option>
-                                     </select>
+                                    </select>
                                 </div>
                             </div>
                         </div>
                     </div>
                     <div class="config-section">
-                         <h3 class="config-legend">Sound</h3>
-                         <div class="form-grid">
+                        <h3 class="config-legend">Sound</h3>
+                        <div class="form-grid">
                             <div class="form-group">
                                 <label class="form-group-label">Options</label>
                                 <div class="checkbox-group option-list">
                                     <div class="option-item">
-                                         <input type="checkbox" id="check-music" name="Music" checked>
-                                         <label for="check-music">Music</label>
+                                        <input type="checkbox" id="check-music" name="Music" checked>
+                                        <label for="check-music">Music</label>
                                     </div>
                                     <div class="option-item">
-                                         <input type="checkbox" id="check-3d-sound" name="3DSound" checked>
-                                         <label for="check-3d-sound">3D Sound</label>
+                                        <input type="checkbox" id="check-3d-sound" name="3DSound" checked>
+                                        <label for="check-3d-sound">3D Sound</label>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="config-section">
+                        <h3 class="config-legend">Offline Play</h3>
+                        <div class="offline-play-grid">
+                            <div class="offline-play-text">
+                                <h4>Install for Offline Access</h4>
+                                <p>By installing, the game will be available to play even when you are not connected to
+                                    the internet. This will download all necessary files to your device (about 550MB in
+                                    size).</p>
+                                <p style="font-size:0.7em;">Note: browsers enforce strict storage and memory quotas, especially when using private/incognito windows. If you encounter an error during installation, please use a regular window and make sure you have enough disk space available on your device.</p>
+                            </div>
+                            <div class="offline-play-controls">
+                                <img class="control-img" id="install-btn" src="install_off.webp" alt="Install Game"
+                                    data-off="install_off.webp" data-on="install_on.webp" style="display: block;">
+                                <img class="control-img" id="uninstall-btn" src="uninstall_off.webp"
+                                    alt="Uninstall Game" data-off="uninstall_off.webp" data-on="uninstall_on.webp"
+                                    style="display: none;">
                             </div>
                         </div>
                     </div>
@@ -923,73 +350,104 @@
             <div class="page-inner-content">
                 <div class="resource-list">
                     <blockquote class="page-quote">
-                        <p>"In November of 2010, after all was said and done, I started getting emails from a few kids and some adults telling me how cool they thought LEGO Island was. Some people actually still play it. I was quite thrilled by these emails and actually quite honored."</p>
+                        <p>"In November of 2010, after all was said and done, I started getting emails from a few kids
+                            and some adults telling me how cool they thought LEGO Island was. Some people actually still
+                            play it. I was quite thrilled by these emails and actually quite honored."</p>
                         <footer>- Wes Jenkins, Creative Director</footer>
                     </blockquote>
-                    <a href="https://www.youtube.com/watch?v=bG55COe_f8I" target="_blank" rel="noopener noreferrer" class="resource-item">
+                    <a href="https://www.youtube.com/watch?v=bG55COe_f8I" target="_blank" rel="noopener noreferrer"
+                        class="resource-item">
                         <h3>The Making of LEGO Island: A Documentary</h3>
-                        <p>An in-depth documentary by MattKC that explores the fascinating and chaotic development story behind the classic game.</p>
+                        <p>An in-depth documentary by MattKC that explores the fascinating and chaotic development story
+                            behind the classic game.</p>
                     </a>
-                    <a href="https://www.youtube.com/watch?v=Poaxx9sMxjw" target="_blank" rel="noopener noreferrer" class="resource-item">
+                    <a href="https://www.youtube.com/watch?v=Poaxx9sMxjw" target="_blank" rel="noopener noreferrer"
+                        class="resource-item">
                         <h3>LEGO Island Radio 24/7</h3>
-                        <p>Enjoy the iconic, high-quality soundtrack of LEGO Island anytime with this continuous live stream, complete with the original DJ interludes.</p>
+                        <p>Enjoy the iconic, high-quality soundtrack of LEGO Island anytime with this continuous live
+                            stream, complete with the original DJ interludes.</p>
                     </a>
-                    <a href="https://www.legoisland.org/" target="_blank" rel="noopener noreferrer" class="resource-item">
+                    <a href="https://www.legoisland.org/" target="_blank" rel="noopener noreferrer"
+                        class="resource-item">
                         <h3>LEGO Island Wiki</h3>
-                        <p>Your ultimate resource for all things LEGO Island. This fan-run wiki contains a wealth of information, research, and details about the game.</p>
+                        <p>Your ultimate resource for all things LEGO Island. This fan-run wiki contains a wealth of
+                            information, research, and details about the game.</p>
                     </a>
-                    <a href="https://github.com/isledecomp/isle" target="_blank" rel="noopener noreferrer" class="resource-item">
+                    <a href="https://github.com/isledecomp/isle" target="_blank" rel="noopener noreferrer"
+                        class="resource-item">
                         <h3>LEGO Island Decompilation</h3>
-                        <p>The core open-source project that reverse-engineered the original game, making this web port and other mods possible. Dive into the source code here.</p>
+                        <p>The core open-source project that reverse-engineered the original game, making this web port
+                            and other mods possible. Dive into the source code here.</p>
                     </a>
-                    <a href="https://github.com/isledecomp/isle-portable" target="_blank" rel="noopener noreferrer" class="resource-item">
+                    <a href="https://github.com/isledecomp/isle-portable" target="_blank" rel="noopener noreferrer"
+                        class="resource-item">
                         <h3>LEGO Island, Portable Version</h3>
-                        <p>A portable, cross-platform version of the decompilation project which serves as the direct foundation for this web-based port.</p>
+                        <p>A portable, cross-platform version of the decompilation project which serves as the direct
+                            foundation for this web-based port.</p>
                     </a>
-                    <a href="https://github.com/isledecomp/isle.pizza" target="_blank" rel="noopener noreferrer" class="resource-item">
+                    <a href="https://github.com/isledecomp/isle.pizza" target="_blank" rel="noopener noreferrer"
+                        class="resource-item">
                         <h3>isle.pizza Frontend</h3>
-                        <p>The source code for this website! A custom-built frontend for the Emscripten version of the portable decompilation project.</p>
+                        <p>The source code for this website! A custom-built frontend for the Emscripten version of the
+                            portable decompilation project.</p>
                     </a>
-                    <a href="https://github.com/isledecomp/LEGOIslandRebuilder" target="_blank" rel="noopener noreferrer" class="resource-item">
+                    <a href="https://github.com/isledecomp/LEGOIslandRebuilder" target="_blank"
+                        rel="noopener noreferrer" class="resource-item">
                         <h3>LEGO Island Rebuilder</h3>
-                        <p>A powerful launcher and tool for patching and modding the original 1997 PC version of LEGO Island. Essential for play and modding.</p>
+                        <p>A powerful launcher and tool for patching and modding the original 1997 PC version of LEGO
+                            Island. Essential for play and modding.</p>
                     </a>
-                    <a href="https://github.com/isledecomp/SIEdit" target="_blank" rel="noopener noreferrer" class="resource-item">
+                    <a href="https://github.com/isledecomp/SIEdit" target="_blank" rel="noopener noreferrer"
+                        class="resource-item">
                         <h3>SIEdit</h3>
-                        <p>A suite of tools developed by the decompilation team for viewing and editing the ".si" script and resource files from the original game.</p>
+                        <p>A suite of tools developed by the decompilation team for viewing and editing the ".si" script
+                            and resource files from the original game.</p>
                     </a>
-                    <a href="https://www.legoisland.org/wiki/The_Making_of_LEGO_Island" target="_blank" rel="noopener noreferrer" class="resource-item">
+                    <a href="https://www.legoisland.org/wiki/The_Making_of_LEGO_Island" target="_blank"
+                        rel="noopener noreferrer" class="resource-item">
                         <h3>The Making of LEGO Island, a memoir by Wes Jenkins</h3>
-                        <p>Read the fascinating, incomplete memoir from Creative Director Wes Jenkins, detailing the development process and the team behind the game.</p>
+                        <p>Read the fascinating, incomplete memoir from Creative Director Wes Jenkins, detailing the
+                            development process and the team behind the game.</p>
                     </a>
                     <a href="/poster.pdf" target="_blank" rel="noopener noreferrer" class="resource-item">
                         <h3>LEGO Island: Free Poster</h3>
-                        <p>Download a copy of the iconic poster that was originally included with the retail release of the game.</p>
+                        <p>Download a copy of the iconic poster that was originally included with the retail release of
+                            the game.</p>
                     </a>
-                    <a href="https://brickstobytes.org/games/lego-island" target="_blank" rel="noopener noreferrer" class="resource-item">
+                    <a href="https://brickstobytes.org/games/lego-island" target="_blank" rel="noopener noreferrer"
+                        class="resource-item">
                         <h3>Development Materials Archive</h3>
-                        <p>Explore a collection of development materials, concept art, and other historical assets from the creation of LEGO Island.</p>
+                        <p>Explore a collection of development materials, concept art, and other historical assets from
+                            the creation of LEGO Island.</p>
                     </a>
-                    <a href="https://le717.github.io/LEGO-Island-VGF/legoisland/#interview" target="_blank" rel="noopener noreferrer" class="resource-item">
+                    <a href="https://le717.github.io/LEGO-Island-VGF/legoisland/#interview" target="_blank"
+                        rel="noopener noreferrer" class="resource-item">
                         <h3>Video Game Flashback: An Interview with Wes Jenkins</h3>
-                        <p>A detailed interview with LEGO Island's Creative Director, Wes Jenkins, offering unique insights into the game's production.</p>
+                        <p>A detailed interview with LEGO Island's Creative Director, Wes Jenkins, offering unique
+                            insights into the game's production.</p>
                     </a>
-                    <a href="https://www.youtube.com/watch?v=fodBG_QylVM" target="_blank" rel="noopener noreferrer" class="resource-item">
+                    <a href="https://www.youtube.com/watch?v=fodBG_QylVM" target="_blank" rel="noopener noreferrer"
+                        class="resource-item">
                         <h3>LEGO® Island - Behind the Scenes</h3>
-                        <p>Watch a rare promotional video created during the game's development, showcasing its progress and vision at the time.</p>
+                        <p>Watch a rare promotional video created during the game's development, showcasing its progress
+                            and vision at the time.</p>
                     </a>
-                    <a href="https://tcrf.net/LEGO_Island" target="_blank" rel="noopener noreferrer" class="resource-item">
+                    <a href="https://tcrf.net/LEGO_Island" target="_blank" rel="noopener noreferrer"
+                        class="resource-item">
                         <h3>The Cutting Room Floor</h3>
-                        <p>Discover unused assets, hidden data, and other secrets left in the retail version of the game. A fascinating look at what might have been.</p>
+                        <p>Discover unused assets, hidden data, and other secrets left in the retail version of the
+                            game. A fascinating look at what might have been.</p>
                     </a>
-                     <a href="https://projectisland.org/music/" target="_blank" rel="noopener noreferrer" class="resource-item">
+                    <a href="https://projectisland.org/music/" target="_blank" rel="noopener noreferrer"
+                        class="resource-item">
                         <h3>Project Island High Quality Music</h3>
-                        <p>A complete, high-quality re-digitization of the LEGO Island soundtrack, restored by the game's main composer, Lorin Nelson.</p>
+                        <p>A complete, high-quality re-digitization of the LEGO Island soundtrack, restored by the
+                            game's main composer, Lorin Nelson.</p>
                     </a>
                 </div>
             </div>
         </div>
-        
+
         <div class="footer-disclaimer">
             <p>LEGO® and LEGO Island™ are trademarks of The LEGO Group.</p>
             <p>This is an unofficial fan project and is not affiliated with or endorsed by The LEGO Group.</p>
@@ -999,12 +457,15 @@
     <div id="canvas-wrapper">
         <div id="loading-gif-overlay">
             <img src="cdspin.gif" alt="Loading game...">
-            <div class="quote-block"> <p class="quote-text">"Whoops! You have to put the CD in your computer"</p>
+            <div class="quote-block">
+                <p class="quote-text">"Whoops! You have to put the CD in your computer"</p>
                 <p class="quote-attribution">- The Infomaniac (1997)</p>
             </div>
             <div class="loading-info-text">
-                <p>"Hello! Hola! Aloha! How ya doin'? YO!" It's your pal, the Infomaniac, with a 2025 update! No need to search for that CD case, my friend!</p>
-                <p>This amazing LEGO Island adventure is now streaming directly from... well, from a really, really big digital box of bricks! Keep an eye on the status below!</p>
+                <p>"Hello! Hola! Aloha! How ya doin'? YO!" It's your pal, the Infomaniac, with a 2025 update! No need to
+                    search for that CD case, my friend!</p>
+                <p>This amazing LEGO Island adventure is now streaming directly from... well, from a really, really big
+                    digital box of bricks! Keep an eye on the status below!</p>
             </div>
             <div id="emscripten-status-message" class="status-message-bar">
                 Loading LEGO® Island... please wait! <code>0%</code>
@@ -1012,355 +473,9 @@
         </div>
         <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
     </div>
-    
-    <script type='text/javascript'>
-        var Module = {
-            arguments: ['--ini', '/config/isle.ini'],
-            running: false,
-            preRun: function() {
-                Module["addRunDependency"]("isle");
-                Module.running = true;
-            },
-            canvas: (function() {
-                return document.getElementById('canvas');
-            })(),
-            onExit: function() {
-                window.location.reload();
-            }
-        };
-    </script>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // --- Elements ---
-            const video = document.getElementById('install-video');
-            const soundToggleEmoji = document.getElementById('sound-toggle-emoji');
-            const mainContainer = document.getElementById('main-container');
-            const topContent = document.getElementById('top-content');
-            const controlsWrapper = document.getElementById('controls-wrapper');
-            const footer = document.querySelector('.footer-disclaimer');
-            const allPages = document.querySelectorAll('.page-content');
-            const pageButtons = document.querySelectorAll('[data-target]');
-            const backButtons = document.querySelectorAll('.page-back-button');
-
-            // --- Sound Toggle ---
-            function updateSoundEmojiState() {
-                soundToggleEmoji.textContent = video.muted ? '🔇' : '🔊';
-                soundToggleEmoji.title = video.muted ? 'Unmute Audio' : 'Mute Audio';
-            }
-
-            if (video && soundToggleEmoji) {
-                updateSoundEmojiState();
-                soundToggleEmoji.addEventListener('click', function() {
-                    video.muted = !video.muted;
-                    updateSoundEmojiState();
-                });
-                video.addEventListener('volumechange', updateSoundEmojiState);
-            }
-
-            // --- Control Image Hover ---
-            const imageControls = document.querySelectorAll('.control-img');
-            imageControls.forEach(control => {
-                const hoverImage = new Image();
-                if (control.dataset.on) {
-                   hoverImage.src = control.dataset.on;
-                }
-                control.addEventListener('mouseover', function() { if(this.dataset.on) {this.src = this.dataset.on;} });
-                control.addEventListener('mouseout', function() { if(this.dataset.off) {this.src = this.dataset.off;} });
-            });
-
-            // --- Emscripten Launch Logic ---
-            const runGameButton = document.getElementById('run-game-btn');
-            const emscriptenCanvas = document.getElementById('canvas');
-            const canvasWrapper = document.getElementById('canvas-wrapper');
-            const loadingGifOverlay = document.getElementById('loading-gif-overlay');
-            const statusMessageBar = document.getElementById('emscripten-status-message');
-
-            runGameButton.addEventListener('click', function() {
-                if (!Module.running) return;
-                video.muted = true;
-                updateSoundEmojiState();
-                this.src = this.dataset.on;
-                
-                mainContainer.style.display = 'none';
-                canvasWrapper.style.display = 'grid';
-
-                document.documentElement.style.overflow = 'hidden';
-                document.documentElement.style.overscrollBehavior = 'none';
-
-                Module["disableOffscreenCanvases"] ||= document.getElementById('renderer-select').value == "0 0x682656f3 0x0 0x0 0x2000000";
-                console.log("disableOffscreenCanvases: " + Module["disableOffscreenCanvases"]);
-
-                Module["removeRunDependency"]("isle");
-                emscriptenCanvas.focus();
-            });
-
-            let progressUpdates = 0;
-            emscriptenCanvas.addEventListener('presenterProgress', function(event) {
-                // Intro animation is ready
-                if (event.detail.objectName == 'Lego_Smk' && event.detail.tickleState == 1) {
-                    loadingGifOverlay.style.display = 'none';
-                    emscriptenCanvas.style.setProperty('display', 'block', 'important');
-                }
-                else if (progressUpdates < 1003) {
-                    progressUpdates++;
-                    const percent = (progressUpdates / 1003 * 100).toFixed();
-                    statusMessageBar.innerHTML = 'Loading LEGO® Island... please wait! <code>' + percent + '%</code>';
-                }
-            });
-
-            // --- Page Navigation Logic ---
-            function showPage(pageId, pushState = true) {
-                const page = document.querySelector(pageId);
-                if (!page) return;
-
-                // Hide main content
-                topContent.style.display = 'none';
-                controlsWrapper.style.display = 'none';
-                
-                // Show selected page
-                page.style.display = 'flex';
-                window.scroll(0, 0);
-                
-                if (pushState) {
-                    const newPath = pageId.replace('-page', '');
-                    history.pushState({ page: pageId }, '', newPath);
-                }
-            }
-
-            function showMainMenu() {
-                // Hide all pages
-                allPages.forEach(p => p.style.display = 'none');
-                
-                // Show main content
-                topContent.style.display = 'flex';
-                controlsWrapper.style.display = 'flex';
-            }
-            
-            pageButtons.forEach(button => {
-                button.addEventListener('click', (e) => {
-                    const targetId = e.currentTarget.dataset.target;
-                    showPage(targetId);
-                });
-            });
-            
-            backButtons.forEach(button => {
-                button.addEventListener('click', () => {
-                    history.back();
-                });
-            });
-
-            window.addEventListener('popstate', (e) => {
-                if (e.state && e.state.page && e.state.page !== 'main') {
-                    showPage(e.state.page, false);
-                } else {
-                    showMainMenu();
-                }
-            });
-
-            // --- OPFS Config Manager ---
-            const configManager = {
-                form: document.querySelector('.config-form'),
-                filePath: 'isle.ini',
-
-                async init() {
-                    if (!this.form) return;
-                    await this.loadConfig();
-                    this.form.addEventListener('change', () => this.saveConfig());
-                },
-
-                async getFileHandle() {
-                    try {
-                        const root = await navigator.storage.getDirectory();
-                        return await root.getFileHandle(this.filePath, { create: true });
-                    } catch (e) {
-                        console.error("OPFS not available or permission denied.", e);
-                        document.getElementById('opfs-disabled').style.display = '';
-                        document.getElementById('config-form').querySelectorAll('input, select').forEach(element => {
-                            element.disabled = true;
-                        });
-                        return null;
-                    }
-                },
-
-                async saveConfig() {
-                    // This function now uses an inline Web Worker for maximum compatibility,
-                    // especially with Safari, which does not support createWritable().
-                    
-                    let iniContent = '[isle]\n';
-                    const elements = this.form.elements;
-
-                    for (const element of elements) {
-                        if (!element.name || element.dataset.notIni == "true") continue;
-
-                        let value;
-                        switch (element.type) {
-                            case 'checkbox':
-                                value = element.checked ? 'YES' : 'NO';
-                                iniContent += `${element.name}=${value}\n`;
-                                break;
-                            case 'radio':
-                                if (element.checked) {
-                                    value = element.value;
-                                    iniContent += `${element.name}=${value}\n`;
-                                }
-                                break;
-                            default:
-                                value = element.value;
-                                iniContent += `${element.name}=${value}\n`;
-                                break;
-                        }
-                    }
-                    
-                    const workerCode = `
-                        self.onmessage = async (e) => {
-                            if (e.data.action === 'save') {
-                                try {
-                                    const root = await navigator.storage.getDirectory();
-                                    const handle = await root.getFileHandle(e.data.filePath, { create: true });
-                                    const accessHandle = await handle.createSyncAccessHandle();
-                                    const encoder = new TextEncoder();
-                                    const encodedData = encoder.encode(e.data.content);
-
-                                    accessHandle.truncate(0);
-                                    accessHandle.write(encodedData, { at: 0 });
-                                    accessHandle.flush();
-                                    accessHandle.close();
-
-                                    self.postMessage({ status: 'success', message: 'Config saved to ' + e.data.filePath });
-                                } catch (err) {
-                                    self.postMessage({ status: 'error', message: 'Failed to save config: ' + err.message });
-                                }
-                            }
-                        };
-                    `;
-
-                    const blob = new Blob([workerCode], { type: 'application/javascript' });
-                    const workerUrl = URL.createObjectURL(blob);
-                    const worker = new Worker(workerUrl);
-
-                    worker.postMessage({
-                        action: 'save',
-                        content: iniContent,
-                        filePath: this.filePath
-                    });
-
-                    worker.onmessage = (e) => {
-                        console.log(e.data.message);
-                        URL.revokeObjectURL(workerUrl); // Clean up the temporary URL
-                        worker.terminate();
-                    };
-
-                    worker.onerror = (e) => {
-                        console.error('An error occurred in the config-saving worker:', e.message);
-                        URL.revokeObjectURL(workerUrl);
-                        worker.terminate();
-                    };
-                },
-
-                async loadConfig() {
-                    const handle = await this.getFileHandle();
-                    if (!handle) return;
-                        
-                    const file = await handle.getFile();
-                    const text = await file.text();
-                    if (!text) {
-                        console.log('No existing config file found, using defaults.');
-                        await this.saveConfig();
-                        return;
-                    }
-
-                    const config = {};
-                    const lines = text.split('\n');
-                    for (const line of lines) {
-                        if (line.startsWith('[') || !line.includes('=')) continue;
-                        const [key, ...valueParts] = line.split('=');
-                        const value = valueParts.join('=').trim();
-                        config[key.trim()] = value;
-                    }
-
-                    this.applyConfigToForm(config);
-                    console.log('Config loaded from', this.filePath);
-                },
-                
-                applyConfigToForm(config) {
-                     const elements = this.form.elements;
-                     for(const key in config) {
-                        const element = elements[key];
-                        if(!element) continue;
-                        
-                        const value = config[key];
-
-                        if (element.type === 'checkbox') {
-                            element.checked = (value === 'YES');
-                        } else if (element.nodeName === 'RADIO') { // radio nodelist
-                            for(const radio of element) {
-                                if(radio.value === value) {
-                                    radio.checked = true;
-                                    break;
-                                }
-                            }
-                        }
-                        else {
-                            element.value = value;
-                        }
-                     }
-                }
-            };
-
-            configManager.init();
-
-            // Handle initial page load with a hash
-            const initialHash = window.location.hash;
-            if (initialHash) {
-                const initialPageId = initialHash + '-page';
-                if (document.querySelector(initialPageId)) {
-                    const urlPath = window.location.pathname;
-                    history.replaceState({ page: 'main' }, '', urlPath);
-                    showPage(initialPageId, true);
-                }
-            } else {
-                 history.replaceState({ page: 'main' }, '', window.location.pathname);
-            }
-
-            if (document.documentElement.requestFullscreen) {
-                const fullscreenElement = document.getElementById('window-fullscreen');
-                const windowedElement = document.getElementById('window-windowed');
-
-                fullscreenElement.addEventListener('change', () => {
-                    if (fullscreenElement.checked) {
-                        document.documentElement.requestFullscreen().catch(err => {
-                            console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
-                        });
-                    }
-                });
-
-                windowedElement.addEventListener('change', () => {
-                    if (windowedElement.checked && document.fullscreenElement) {
-                        document.exitFullscreen();
-                    }
-                });
-
-                // Event listener for changes in fullscreen state (e.g., F11 or Esc key)
-                document.addEventListener('fullscreenchange', () => {
-                    if (document.fullscreenElement) {
-                        fullscreenElement.checked = true;
-                    } else {
-                        windowedElement.checked = true;
-                    }
-                });
-            }
-            else {
-                document.getElementById('window-form').style.display = 'none';
-            }
-
-            if (!window.matchMedia('(any-pointer: coarse)').matches) {
-                document.getElementById('touch-section').style.display = 'none';
-            }
-        });
-    </script>
-
-    <script src="isle.js" async></script>
+    <script src="app.js" defer></script>
+    <script src="isle.js" defer></script>
 </body>
-</html>
 
+</html>
