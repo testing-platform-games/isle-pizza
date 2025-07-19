@@ -15,12 +15,11 @@ var Module = {
 
 document.addEventListener('DOMContentLoaded', function () {
     // --- Elements ---
-    const video = document.getElementById('install-video');
+    const audio = document.getElementById('install-audio');
     const soundToggleEmoji = document.getElementById('sound-toggle-emoji');
     const mainContainer = document.getElementById('main-container');
     const topContent = document.getElementById('top-content');
     const controlsWrapper = document.getElementById('controls-wrapper');
-    const footer = document.querySelector('.footer-disclaimer');
     const allPages = document.querySelectorAll('.page-content');
     const pageButtons = document.querySelectorAll('[data-target]');
     const backButtons = document.querySelectorAll('.page-back-button');
@@ -31,17 +30,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- Sound Toggle ---
     function updateSoundEmojiState() {
-        soundToggleEmoji.textContent = video.muted ? '🔇' : '🔊';
-        soundToggleEmoji.title = video.muted ? 'Unmute Audio' : 'Mute Audio';
+        soundToggleEmoji.textContent = audio.muted ? '🔇' : '🔊';
+        soundToggleEmoji.title = audio.muted ? 'Unmute Audio' : 'Mute Audio';
     }
 
-    if (video && soundToggleEmoji) {
+    if (audio && soundToggleEmoji) {
         updateSoundEmojiState();
         soundToggleEmoji.addEventListener('click', function () {
-            video.muted = !video.muted;
+            audio.muted = !audio.muted;
+            if (!audio.muted) {
+                audio.currentTime = 0;
+                audio.play();
+            }
+
             updateSoundEmojiState();
         });
-        video.addEventListener('volumechange', updateSoundEmojiState);
+        audio.addEventListener('volumechange', updateSoundEmojiState);
     }
 
     // --- Control Image Hover ---
@@ -64,7 +68,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     runGameButton.addEventListener('click', function () {
         if (!Module.running) return;
-        video.muted = true;
+        audio.muted = true;
         updateSoundEmojiState();
         this.src = this.dataset.on;
 

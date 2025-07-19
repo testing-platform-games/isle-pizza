@@ -10,6 +10,7 @@
     <link rel="preload" href="app.js" as="script">
     <link rel="preload" href="isle.js" as="script">
     <link rel="preload" href="isle.wasm" as="fetch" crossorigin>
+    <link rel="preload" href="install.webp" as="image">
     <link rel="preload" href="island.webp" as="image">
 
     <meta name="description"
@@ -41,10 +42,11 @@
     <div id="main-container">
         <div id="top-content">
             <div class="video-container">
-                <video id="install-video" width="260" height="260" autoplay loop playsinline muted>
-                    <source src="install.mp4" type="video/mp4">
-                    Your browser does not support the video tag.
-                </video>
+                <img id="install-video" width="260" height="260" src="install.webp" alt="Install Game">
+                <audio id="install-audio" loop muted preload="none">
+                    <source src="install.mp3" type="audio/mpeg">
+                    Your browser does not support the audio tag.
+                </audio>
                 <span id="sound-toggle-emoji" title="Unmute Audio">🔇</span>
             </div>
             <img id="island-logo-img" width="567" height="198" src="island.webp" alt="Lego Island Logo">

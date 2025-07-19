@@ -15,7 +15,8 @@ const coreAppFiles = [
     '/free_stuff_off.webp', '/free_stuff_on.webp', '/install_off.webp', '/install_on.webp',
     '/island.webp', '/isle.js', '/isle.wasm', '/poster.pdf', '/read_me_off.webp',
     '/read_me_on.webp', '/run_game_off.webp', '/run_game_on.webp', '/shark.webp',
-    '/uninstall_off.webp', '/uninstall_on.webp', '/app.js', '/style.css', '/manifest.json'
+    '/uninstall_off.webp', '/uninstall_on.webp', '/app.js', '/style.css', '/manifest.json',
+    '/install.webp', '/install.mp3'
 ];
 
 const gameFiles = [
@@ -35,14 +36,7 @@ const STATIC_CACHE_NAME = 'static-assets-v1';
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(STATIC_CACHE_NAME).then((cache) => {
-            return cache.addAll(coreAppFiles).then(() => {
-                return fetch('/install.mp4', { cache: 'reload' }).then((response) => {
-                    if (!response.ok) {
-                        throw new Error('Video fetch failed!');
-                    }
-                    return cache.put('/install.mp4', response);
-                });
-            });
+            return cache.addAll(coreAppFiles);
         })
     );
     self.skipWaiting();
