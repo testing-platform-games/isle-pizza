@@ -30,22 +30,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- Sound Toggle ---
     function updateSoundEmojiState() {
-        soundToggleEmoji.textContent = audio.muted ? '🔇' : '🔊';
-        soundToggleEmoji.title = audio.muted ? 'Unmute Audio' : 'Mute Audio';
+        soundToggleEmoji.textContent = audio.paused ? '🔇' : '🔊';
+        soundToggleEmoji.title = audio.paused ? 'Play Audio' : 'Pause Audio';
     }
 
     if (audio && soundToggleEmoji) {
         updateSoundEmojiState();
         soundToggleEmoji.addEventListener('click', function () {
-            audio.muted = !audio.muted;
-            if (!audio.muted) {
+            if (audio.paused) {
                 audio.currentTime = 0;
                 audio.play();
+            } else {
+                audio.pause();
             }
-
-            updateSoundEmojiState();
         });
-        audio.addEventListener('volumechange', updateSoundEmojiState);
+        audio.addEventListener('play', updateSoundEmojiState);
+        audio.addEventListener('pause', updateSoundEmojiState);
     }
 
     // --- Control Image Hover ---
@@ -68,7 +68,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     runGameButton.addEventListener('click', function () {
         if (!Module.running) return;
-        audio.muted = true;
+        audio.pause();
         updateSoundEmojiState();
         this.src = this.dataset.on;
 
