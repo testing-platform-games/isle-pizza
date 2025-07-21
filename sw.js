@@ -16,7 +16,7 @@ const coreAppFiles = [
     '/island.webp', '/isle.js', '/isle.wasm', '/poster.pdf', '/read_me_off.webp',
     '/read_me_on.webp', '/run_game_off.webp', '/run_game_on.webp', '/shark.webp',
     '/uninstall_off.webp', '/uninstall_on.webp', '/app.js', '/style.css', '/manifest.json',
-    '/install.webp', '/install.mp3'
+    '/install.webp', '/install.mp3', '/downloader.js'
 ];
 
 const gameFiles = [
@@ -32,22 +32,6 @@ const gameFiles = [
 ];
 
 const STATIC_CACHE_NAME = 'static-assets-v1';
-
-self.addEventListener('install', (event) => {
-    event.waitUntil(
-        caches.open(STATIC_CACHE_NAME).then((cache) => {
-            return cache.addAll(coreAppFiles);
-        })
-    );
-    self.skipWaiting();
-});
-
-registerRoute(
-    ({ url }) => coreAppFiles.includes(url.pathname),
-    new StaleWhileRevalidate({
-        cacheName: STATIC_CACHE_NAME,
-    })
-);
 
 const rangeRequestsPlugin = new RangeRequestsPlugin();
 const normalizePathPlugin = {
@@ -82,94 +66,7 @@ class LegoCacheStrategy extends Strategy {
     }
 }
 
-registerRoute(
-    ({ url }) => url.pathname.startsWith('/LEGO/'),
-    new LegoCacheStrategy()
-);
-
-self.addEventListener('message', (event) => {
-    if (event.data && event.data.action) {
-        switch (event.data.action) {
-            case 'install_language_pack':
-                installLanguagePack(event.data.language, event.source);
-                break;
-            case 'uninstall_language_pack':
-                uninstallLanguagePack(event.data.language, event.source);
-                break;
-            case 'check_cache_status':
-                checkCacheStatus(event.data.language, event.source);
-                break;
-        }
-    }
-});
-
 const getLanguageCacheName = (language) => `game-assets-${language}`;
-
-async function installLanguagePack(language, client) {
-    const THROTTLE_MS = 100;
-    const cacheName = getLanguageCacheName(language);
-
-    try {
-        const fileMetadataPromises = gameFiles.map(fileUrl =>
-            fetch(fileUrl, { method: 'HEAD', headers: { 'Accept-Language': language } })
-                .then(response => {
-                    if (!response.ok) throw new Error(`Failed to HEAD ${fileUrl}`);
-                    return { url: fileUrl, size: Number(response.headers.get('content-length')) || 0 };
-                })
-        );
-        const fileMetadata = await Promise.all(fileMetadataPromises);
-        const totalBytesToDownload = fileMetadata.reduce((sum, file) => sum + file.size, 0);
-        let bytesDownloaded = 0;
-        let lastProgressUpdate = 0;
-
-        const cache = await caches.open(cacheName);
-
-        for (const file of fileMetadata) {
-            const request = new Request(file.url, { headers: { 'Accept-Language': language } });
-            const response = await fetch(request);
-
-            if (!response.ok || !response.body) {
-                throw new Error(`Failed to fetch ${file.url}`);
-            }
-
-            const [streamForCaching, streamForProgress] = response.body.tee();
-
-            const responseToCache = new Response(streamForCaching, response);
-            const cachePromise = cache.put(request, responseToCache);
-
-            const reader = streamForProgress.getReader();
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                bytesDownloaded += value.length;
-                const now = Date.now();
-
-                if (now - lastProgressUpdate > THROTTLE_MS) {
-                    lastProgressUpdate = now;
-                    client.postMessage({
-                        action: 'install_progress',
-                        progress: (bytesDownloaded / totalBytesToDownload) * 100,
-                        language: language
-                    });
-                }
-            }
-
-            await cachePromise;
-        }
-
-        client.postMessage({
-            action: 'install_progress',
-            progress: 100,
-            language: language
-        });
-        client.postMessage({ action: 'install_complete', success: true, language: language });
-    } catch (error) {
-        console.error("Aborting installation due to an error:", error);
-        await caches.delete(cacheName);
-        client.postMessage({ action: 'install_failed', language: language });
-    }
-}
 
 async function uninstallLanguagePack(language, client) {
     const cacheName = getLanguageCacheName(language);
@@ -187,9 +84,39 @@ async function uninstallLanguagePack(language, client) {
 
 async function checkCacheStatus(language, client) {
     const cacheName = getLanguageCacheName(language);
-    const hasCache = await caches.has(cacheName);
-    client.postMessage({ action: 'cache_status', exists: hasCache, language: language });
+    const cache = await caches.open(cacheName);
+    const requests = await cache.keys();
+    const cachedUrls = requests.map(req => new URL(req.url).pathname);
+    const missingFiles = gameFiles.filter(file => !cachedUrls.includes(file));
+
+    client.postMessage({
+        action: 'cache_status',
+        isInstalled: missingFiles.length === 0,
+        missingFiles: missingFiles,
+        language: language
+    });
 }
+
+registerRoute(
+    ({ url }) => coreAppFiles.includes(url.pathname),
+    new StaleWhileRevalidate({
+        cacheName: STATIC_CACHE_NAME,
+    })
+);
+
+registerRoute(
+    ({ url }) => url.pathname.startsWith('/LEGO/'),
+    new LegoCacheStrategy()
+);
+
+self.addEventListener('install', (event) => {
+    event.waitUntil(
+        caches.open(STATIC_CACHE_NAME).then((cache) => {
+            return cache.addAll(coreAppFiles);
+        })
+    );
+    self.skipWaiting();
+});
 
 self.addEventListener('activate', (event) => {
     event.waitUntil(
@@ -204,4 +131,17 @@ self.addEventListener('activate', (event) => {
         })
     );
     event.waitUntil(self.clients.claim());
+});
+
+self.addEventListener('message', (event) => {
+    if (event.data && event.data.action) {
+        switch (event.data.action) {
+            case 'uninstall_language_pack':
+                uninstallLanguagePack(event.data.language, event.source);
+                break;
+            case 'check_cache_status':
+                checkCacheStatus(event.data.language, event.source);
+                break;
+        }
+    }
 });

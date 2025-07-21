@@ -346,6 +346,9 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('touch-section').style.display = 'none';
     }
 
+    let downloaderWorker = null;
+    let missingGameFiles = [];
+
     if ('serviceWorker' in navigator) {
         Promise.all([
             configManager.init(),
@@ -370,6 +373,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if (navigator.serviceWorker && navigator.serviceWorker.controller) {
             await requestPersistentStorage();
 
+            if (downloaderWorker) downloaderWorker.terminate();
+            downloaderWorker = new Worker('/downloader.js');
+            downloaderWorker.onmessage = handleWorkerMessage;
+
             const selectedLanguage = languageSelect.value;
             installBtn.style.display = 'none';
             uninstallBtn.style.display = 'none';
@@ -377,8 +384,9 @@ document.addEventListener('DOMContentLoaded', function () {
             progressCircular.textContent = '0%';
             progressCircular.style.background = 'conic-gradient(#FFD700 0deg, #333 0deg)';
 
-            navigator.serviceWorker.controller.postMessage({
-                action: 'install_language_pack',
+            downloaderWorker.postMessage({
+                action: 'install',
+                missingFiles: missingGameFiles,
                 language: selectedLanguage
             });
         }
@@ -427,29 +435,39 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function handleServiceWorkerMessage(event) {
-        const { action, language, progress, exists, success } = event.data;
-        if (language !== languageSelect.value) return;
+        const { action, language, isInstalled, success } = event.data;
+        if (language && language !== languageSelect.value) return;
 
         switch (action) {
             case 'cache_status':
-                updateInstallUI(exists);
+                missingGameFiles = event.data.missingFiles;
+                updateInstallUI(isInstalled);
                 break;
+            case 'uninstall_complete':
+                updateInstallUI(!success);
+                checkInitialCacheStatus();
+                break;
+        }
+    }
+
+    function handleWorkerMessage(event) {
+        const { action, progress, success, error } = event.data;
+        
+        switch (action) {
             case 'install_progress':
                 updateInstallUI(false, true);
                 const angle = (progress / 100) * 360;
                 progressCircular.textContent = `${Math.round(progress)}%`;
-                progressCircular.style.background =
-                    `radial-gradient(#181818 60%, transparent 61%), conic-gradient(#FFD700 ${angle}deg, #333 ${angle}deg)`;
+                progressCircular.style.background = `radial-gradient(#181818 60%, transparent 61%), conic-gradient(#FFD700 ${angle}deg, #333 ${angle}deg)`;
                 break;
             case 'install_complete':
                 updateInstallUI(success);
-                break;
-            case 'uninstall_complete':
-                updateInstallUI(!success);
+                if (downloaderWorker) downloaderWorker.terminate();
                 break;
             case 'install_failed':
-                alert('Download failed. Please check your internet connection and try again.');
+                alert(`Download failed: ${error}`);
                 updateInstallUI(false);
+                if (downloaderWorker) downloaderWorker.terminate();
                 break;
         }
     }
