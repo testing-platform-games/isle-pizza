@@ -663,6 +663,68 @@ select {
     transition: background 0.2s ease-out;
 }
 
+.faq-section {
+    margin-top: 30px;
+    padding-top: 10px;
+    border-top: 1px solid #444;
+    width: 100%;
+    text-align: left;
+}
+
+.faq-section h2 {
+    color: #FFD700;
+    font-size: 1.5em;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.faq-section details {
+    background-color: #1c1c1c;
+    border: 1px solid #333;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    transition: background-color 0.2s ease;
+}
+
+.faq-section details[open] {
+    background-color: #252525;
+}
+
+.faq-section summary {
+    padding: 20px;
+    cursor: pointer;
+    font-weight: bold;
+    color: #e0e0e0;
+    font-size: 1.1em;
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.faq-section summary::-webkit-details-marker {
+    display: none;
+}
+
+.faq-section summary::after {
+    content: '+';
+    font-size: 1.5em;
+    color: #FFD700;
+    transition: transform 0.2s ease-in-out;
+}
+
+.faq-section details[open] summary::after {
+    transform: rotate(45deg);
+}
+
+.faq-section details p {
+    padding: 0 20px 20px 20px;
+    margin: 0;
+    color: #b0b0b0;
+    font-size: 0.9em;
+    line-height: 1.5;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     #install-video {
