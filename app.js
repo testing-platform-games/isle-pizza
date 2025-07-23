@@ -27,6 +27,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const installBtn = document.getElementById('install-btn');
     const uninstallBtn = document.getElementById('uninstall-btn');
     const controlsContainer = document.querySelector('.offline-play-controls');
+    const msaaSelect = document.querySelector('select[name="MSAA"]');
+    const msaaGroup = msaaSelect.closest('.form-group');
+    const afSelect = document.querySelector('select[name="Anisotropic"]');
+    const afGroup = afSelect.closest('.form-group');
+    const rendererSelect = document.getElementById('renderer-select');
 
     // --- Sound Toggle ---
     function updateSoundEmojiState() {
@@ -78,7 +83,7 @@ document.addEventListener('DOMContentLoaded', function () {
         document.documentElement.style.overflow = 'hidden';
         document.documentElement.style.overscrollBehavior = 'none';
 
-        Module["disableOffscreenCanvases"] ||= document.getElementById('renderer-select').value == "0 0x682656f3 0x0 0x0 0x2000000";
+        Module["disableOffscreenCanvases"] ||= rendererSelect.value == "0 0x682656f3 0x0 0x0 0x2000000";
         console.log("disableOffscreenCanvases: " + Module["disableOffscreenCanvases"]);
 
         Module["removeRunDependency"]("isle");
@@ -346,6 +351,52 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('touch-section').style.display = 'none';
     }
 
+    const gl = document.createElement('canvas').getContext('webgl2');
+    if (gl) {
+        const samples = gl.getInternalformatParameter(gl.RENDERBUFFER, gl.RGBA8, gl.SAMPLES);
+        if (samples && samples.length > 0 && Math.max(...samples) > 1) {
+            msaaSelect.innerHTML = '';
+            const offOption = document.createElement('option');
+            offOption.value = '1';
+            offOption.textContent = 'Off';
+            msaaSelect.appendChild(offOption);
+            samples.sort().forEach(sampleCount => {
+                if (sampleCount > 1) {
+                    const option = document.createElement('option');
+                    option.value = sampleCount;
+                    option.textContent = `${sampleCount}x`;
+                    msaaSelect.appendChild(option);
+                }
+            });
+        } else {
+            msaaGroup.style.display = 'none';
+        }
+
+        const ext = gl.getExtension('EXT_texture_filter_anisotropic');
+        if (ext) {
+            const maxAnisotropy = gl.getParameter(ext.MAX_TEXTURE_MAX_ANISOTROPY_EXT);
+
+            afSelect.innerHTML = '';
+
+            const offOption = document.createElement('option');
+            offOption.value = '1';
+            offOption.textContent = 'Off';
+            afSelect.appendChild(offOption);
+
+            for (let i = 2; i <= maxAnisotropy; i *= 2) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = `${i}x`;
+                afSelect.appendChild(option);
+            }
+        } else {
+            afGroup.style.display = 'none';
+        }
+    } else {
+        msaaGroup.style.display = 'none';
+        afGroup.style.display = 'none';
+    }
+
     let downloaderWorker = null;
     let missingGameFiles = [];
 
@@ -355,6 +406,7 @@ document.addEventListener('DOMContentLoaded', function () {
             navigator.serviceWorker.register('/sw.js').then(() => navigator.serviceWorker.ready)
         ]).then(([configResult, swRegistration]) => {
             checkInitialCacheStatus();
+            showOrHideGraphicsOptions();
         }).catch(error => {
             console.error('Initialization failed:', error);
         });
@@ -362,7 +414,9 @@ document.addEventListener('DOMContentLoaded', function () {
         navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage);
     }
     else {
-        configManager.init();
+        configManager.init().then(() => {
+            showOrHideGraphicsOptions();
+        });
     }
 
     const progressCircular = document.createElement('div');
@@ -404,6 +458,10 @@ document.addEventListener('DOMContentLoaded', function () {
         checkInitialCacheStatus();
     });
 
+    rendererSelect.addEventListener('change', () => {
+        showOrHideGraphicsOptions();
+    });
+
     async function requestPersistentStorage() {
         if (navigator.storage && navigator.storage.persist) {
             const isPersisted = await navigator.storage.persisted();
@@ -425,6 +483,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 action: 'check_cache_status',
                 language: selectedLanguage
             });
+        }
+    }
+
+    function showOrHideGraphicsOptions() {
+        if (rendererSelect.value == "0 0x682656f3 0x0 0x0 0x2000000") {
+            msaaGroup.style.display = 'none';
+            afGroup.style.display = 'none';
+        }
+        else {
+            msaaGroup.style.display = '';
+            afGroup.style.display = '';
         }
     }
 
@@ -452,7 +521,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function handleWorkerMessage(event) {
         const { action, progress, success, error } = event.data;
-        
+
         switch (action) {
             case 'install_progress':
                 updateInstallUI(false, true);
