@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const afSelect = document.querySelector('select[name="Anisotropic"]');
     const afGroup = afSelect.closest('.form-group');
     const rendererSelect = document.getElementById('renderer-select');
+    const hdTextures = document.getElementById('check-hd-textures');
 
     // --- Sound Toggle ---
     function updateSoundEmojiState() {
@@ -205,6 +206,12 @@ document.addEventListener('DOMContentLoaded', function () {
                         iniContent += `${element.name}=${value}\n`;
                         break;
                 }
+            }
+
+            if (hdTextures) {
+                iniContent += "[extensions]\n";
+                value = hdTextures.checked ? 'YES' : 'NO';
+                iniContent += `${hdTextures.name}=${value}\n`;
             }
 
             const workerCode = `
@@ -458,6 +465,10 @@ document.addEventListener('DOMContentLoaded', function () {
         checkInitialCacheStatus();
     });
 
+    hdTextures.addEventListener('change', () => {
+        checkInitialCacheStatus();
+    });
+
     rendererSelect.addEventListener('change', () => {
         showOrHideGraphicsOptions();
     });
@@ -478,10 +489,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function checkInitialCacheStatus() {
         if (navigator.serviceWorker.controller) {
-            const selectedLanguage = languageSelect.value;
             navigator.serviceWorker.controller.postMessage({
                 action: 'check_cache_status',
-                language: selectedLanguage
+                language: languageSelect.value,
+                hdTextures: hdTextures.checked
             });
         }
     }

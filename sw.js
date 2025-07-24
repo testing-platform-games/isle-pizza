@@ -31,6 +31,24 @@ const gameFiles = [
     "/LEGO/Scripts/Race/JETRACER.SI", "/LEGO/data/WORLD.WDB"
 ];
 
+const textureFiles = [
+    "/LEGO/textures/beach.gif.bmp", "/LEGO/textures/doctor.gif.bmp", "/LEGO/textures/infochst.gif.bmp",
+    "/LEGO/textures/o.gif.bmp", "/LEGO/textures/relrel01.gif.bmp", "/LEGO/textures/rockx.gif.bmp",
+    "/LEGO/textures/water2x.gif.bmp", "/LEGO/textures/bowtie.gif.bmp", "/LEGO/textures/e.gif.bmp",
+    "/LEGO/textures/jfrnt.gif.bmp", "/LEGO/textures/papachst.gif.bmp", "/LEGO/textures/road1way.gif.bmp",
+    "/LEGO/textures/sandredx.gif.bmp", "/LEGO/textures/w_curve.gif.bmp", "/LEGO/textures/brela_01.gif.bmp",
+    "/LEGO/textures/flowers.gif.bmp", "/LEGO/textures/l6.gif.bmp", "/LEGO/textures/pebblesx.gif.bmp",
+    "/LEGO/textures/road3wa2.gif.bmp", "/LEGO/textures/se_curve.gif.bmp", "/LEGO/textures/wnbars.gif.bmp",
+    "/LEGO/textures/bth1chst.gif.bmp", "/LEGO/textures/fruit.gif.bmp", "/LEGO/textures/l.gif.bmp",
+    "/LEGO/textures/pizcurve.gif.bmp", "/LEGO/textures/road3wa3.gif.bmp", "/LEGO/textures/shftchst.gif.bmp",
+    "/LEGO/textures/bth2chst.gif.bmp", "/LEGO/textures/gasroad.gif.bmp", "/LEGO/textures/mamachst.gif.bmp",
+    "/LEGO/textures/polbar01.gif.bmp", "/LEGO/textures/road3way.gif.bmp", "/LEGO/textures/tightcrv.gif.bmp",
+    "/LEGO/textures/cheker01.gif.bmp", "/LEGO/textures/g.gif.bmp", "/LEGO/textures/mech.gif.bmp",
+    "/LEGO/textures/polkadot.gif.bmp", "/LEGO/textures/road4way.gif.bmp", "/LEGO/textures/unkchst.gif.bmp",
+    "/LEGO/textures/construct.gif.bmp", "/LEGO/textures/grassx.gif.bmp", "/LEGO/textures/nwcurve.gif.bmp",
+    "/LEGO/textures/redskul.gif.bmp", "/LEGO/textures/roadstr8.gif.bmp", "/LEGO/textures/vest.gif.bmp"
+];
+
 const STATIC_CACHE_NAME = 'static-assets-v1';
 
 const rangeRequestsPlugin = new RangeRequestsPlugin();
@@ -82,12 +100,16 @@ async function uninstallLanguagePack(language, client) {
     }
 }
 
-async function checkCacheStatus(language, client) {
+async function checkCacheStatus(language, hdTextures, client) {
     const cacheName = getLanguageCacheName(language);
     const cache = await caches.open(cacheName);
     const requests = await cache.keys();
     const cachedUrls = requests.map(req => new URL(req.url).pathname);
-    const missingFiles = gameFiles.filter(file => !cachedUrls.includes(file));
+    let requiredFiles = gameFiles;
+    if (hdTextures) {
+        requiredFiles = requiredFiles.concat(textureFiles);
+    }
+    const missingFiles = requiredFiles.filter(file => !cachedUrls.includes(file));
 
     client.postMessage({
         action: 'cache_status',
@@ -140,7 +162,7 @@ self.addEventListener('message', (event) => {
                 uninstallLanguagePack(event.data.language, event.source);
                 break;
             case 'check_cache_status':
-                checkCacheStatus(event.data.language, event.source);
+                checkCacheStatus(event.data.language, event.data.hdTextures, event.source);
                 break;
         }
     }
