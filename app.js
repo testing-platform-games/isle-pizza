@@ -105,6 +105,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    emscriptenCanvas.addEventListener('extensionProgress', function (event) {
+        statusMessageBar.innerHTML = 'Loading ' + event.detail.name + '... please wait! <code>' + event.detail.progress + '%</code>';
+    });
+
     // --- Page Navigation Logic ---
     function showPage(pageId, pushState = true) {
         const page = document.querySelector(pageId);
