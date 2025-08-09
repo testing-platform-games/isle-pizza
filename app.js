@@ -414,7 +414,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if ('serviceWorker' in navigator) {
         Promise.all([
             configManager.init(),
-            navigator.serviceWorker.register('/sw.js').then(() => navigator.serviceWorker.ready)
+            navigator.serviceWorker.register('./sw.js').then(() => navigator.serviceWorker.ready)
         ]).then(([configResult, swRegistration]) => {
             checkInitialCacheStatus();
             showOrHideGraphicsOptions();
