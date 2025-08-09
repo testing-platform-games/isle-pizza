@@ -1,7 +1,7 @@
-importScripts('/workbox/workbox-sw.js');
+importScripts('//workbox/workbox-sw.js');
 
 workbox.setConfig({
-    modulePathPrefix: '/workbox/'
+    modulePathPrefix: './workbox/'
 });
 
 const { precacheAndRoute, cleanupOutdatedCaches } = workbox.precaching;
